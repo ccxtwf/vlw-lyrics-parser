@@ -5,7 +5,7 @@ from ..classes.exceptions import ReadMediawikiException
 
 from typing import Tuple, List
 
-MEDIAWIKI_ACTION_API = getenv("MEDIAWIKI_ACTION_API") or "http://localhost:8080/api.php"
+MEDIAWIKI_ACTION_API_ENTRYPOINT = getenv("MEDIAWIKI_ACTION_API_ENTRYPOINT") or "http://localhost:8080/api.php"
 
 async def render_html(page_contents: str) -> Tuple[str, List[str], List[str]]:
   """
@@ -34,7 +34,7 @@ async def render_html(page_contents: str) -> Tuple[str, List[str], List[str]]:
       data.add_field(k, v)
     async with aiohttp.ClientSession() as session:
       async with session.post(
-        MEDIAWIKI_ACTION_API, 
+        MEDIAWIKI_ACTION_API_ENTRYPOINT, 
         headers=headers, 
         data=data
       ) as response:

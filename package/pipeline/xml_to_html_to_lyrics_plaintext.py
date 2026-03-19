@@ -12,15 +12,13 @@ from ..html2lyrics.parse_to_plaintext import parse_lyrics
 
 from typing import Optional, Tuple
 
-XML_DEFINITION = getenv("DUMP_XML_DEFINITION")
-
 async def pipeline(xml_dump_file_path: str, sqlite_db_file_path: str) -> None:
   """
     A pipeline to convert/parse several wiki pages (in the format of a MediaWiki XML dump)
     into HTML, then into a structured object containing the parsed lyrics (in plaintext), 
     and finally saving the parsed results into a SQLITE database 
   """
-  MAX_PAGES_TO_UNPACK = getenv("DUMP_UNPACK_MAX_NUMBER_OF_PAGES") or "10"
+  MAX_PAGES_TO_UNPACK = getenv("MW_XML_UNPACK_MAX_NUM_PAGES") or "10"
 
   async def treat_batch(batch: Tuple[ET.Element, ...]) -> None:
     """

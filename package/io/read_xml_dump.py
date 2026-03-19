@@ -9,7 +9,7 @@ from ..classes.exceptions import ReadXmlException
 from typing import Tuple
 from collections.abc import Callable, Awaitable
 
-XML_DEFINITION = getenv("DUMP_XML_DEFINITION")
+XML_NAMESPACE = getenv("MW_XML_DUMP_NAMESPACE")
 
 async def read_dump(dump_file_path: str, max_pages_to_unpack_at_a_time: int, batch_callback: Callable[[Tuple[ET.Element, ...]], Awaitable]) -> None:
   """
@@ -38,12 +38,12 @@ async def read_dump(dump_file_path: str, max_pages_to_unpack_at_a_time: int, bat
 
 def get_page_properties(xmlTree: ET.Element) -> Tuple[str, int]:
   try:
-    title = xmlTree.find(f"{XML_DEFINITION}title")
+    title = xmlTree.find(f"{XML_NAMESPACE}title")
     if title is None or title.text is None:
       raise ReadXmlException("Failed to read <title> of <page>")
     title = title.text
 
-    page_id = xmlTree.find(f"{XML_DEFINITION}id")
+    page_id = xmlTree.find(f"{XML_NAMESPACE}id")
     if page_id is None or page_id.text is None:
       raise ReadXmlException("Failed to read <id> of <page>")
     page_id = int(page_id.text) # type: ignore
@@ -70,12 +70,12 @@ def get_page_contents(xmlTree: ET.Element) -> str:
     If you exported the full history, worry more.
   """
   try: 
-    if xmlTree.tag != f"{XML_DEFINITION}page":
+    if xmlTree.tag != f"{XML_NAMESPACE}page":
       raise ReadXmlException(f"Expected XML Element <page>, got <{xmlTree.tag}>")
-    revision = xmlTree.find(f"{XML_DEFINITION}revision")
+    revision = xmlTree.find(f"{XML_NAMESPACE}revision")
     if revision is None:
       raise ReadXmlException("Cannot find XML element node <revision> in <page>")
-    contents = revision.find(f"{XML_DEFINITION}text")
+    contents = revision.find(f"{XML_NAMESPACE}text")
     if contents is None or contents.text is None:
       raise ReadXmlException("Cannot find XML element node <text> in <revision>")
     contents = unescape(contents.text)
