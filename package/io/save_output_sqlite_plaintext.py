@@ -50,7 +50,7 @@ def initialize_db(db_filepath: str):
     );""")
   # No index, sorry
 
-def save_lyrics(db_filepath: str, batch_results: List[Optional[ParsedResults]]):
+def save_lyrics_sqlite(db_filepath: str, batch_results: List[Optional[ParsedResults]]):
   """
     Save the parsed lyrics to a SQLITE database
   """
@@ -67,7 +67,7 @@ def save_lyrics(db_filepath: str, batch_results: List[Optional[ParsedResults]]):
     dto_pages.append((page_id, results.title))
     dto_vdb_links.extend([(page_id, id) for id in results.vdb_ids])
     for table_id, st in results.lyrics.items():
-      m = st._map_ids
+      m = st.map_ids
       tn = results.notes.get(table_id, None)
       for col_id, header in m.items():
         lyrics = st.data.get(col_id, [])

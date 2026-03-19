@@ -1,9 +1,8 @@
-from dataclasses import dataclass
+from pydantic import BaseModel, Field
 
 from typing import Any, List, Dict
 
-@dataclass
-class ParsedTranslators:
+class ParsedTranslators(BaseModel):
   """
     A representation of translation credits for a given translator
 
@@ -23,11 +22,10 @@ class ParsedTranslators:
   """
   col_id: str
   is_official: bool
-  translators: List[str]
+  translators: List[str] = Field(default_factory=list)
   text: str
 
-@dataclass
-class ReferenceItem:
+class ReferenceItem(BaseModel):
   """
     A representation of a `li` item in `ol.references` (the HTML element
     representing a group of references/notes)
@@ -53,8 +51,7 @@ class ReferenceItem:
   def to_plaintext(self) -> str:
     return f"[{self.group_name + " " if self.group_name is not None else ""}{self.counter}] {self.text}"
 
-@dataclass
-class ParsedLyricsPlaintext:
+class ParsedLyricsPlaintext(BaseModel):
   """
     A representation of data for one lyrics table
      - Lyrics are stored as plaintext
@@ -84,23 +81,17 @@ class ParsedLyricsPlaintext:
     Key -> Semantic Column ID, e.g. `en`
     Value -> List of translators' names and whether the translation is official
   """
-  headers: List[str]
+  headers: List[str] = Field(default_factory=list)
   table_id: str
-  _map_ids: Dict[str, str]
-  data: Dict[str, List[str]]
-  translators: Dict[str, ParsedTranslators] | None
+  map_ids: Dict[str, str] = Field(default_factory=dict)
+  data: Dict[str, List[str]] = Field(default_factory=dict)
+  translators: Dict[str, ParsedTranslators] | None = None
   # notes: Dict[str, List[ReferenceItem]]
 
-  def __init__(self, headers: List[str], table_id: str, map_ids: Dict[str, str]) -> None:
-    self.headers = headers
-    self.table_id = table_id
-    self._map_ids = map_ids
-    self.data = { id: [] for id in self._map_ids }
-    self.translators = None
-    # self.notes = { id: [] for id in self._map_ids }
+  def model_post_init(self, __context=None):
+    self.data = { id: [] for id in self.map_ids }
 
-@dataclass
-class ParsedResults:
+class ParsedResults(BaseModel):
   """
     A representation of data for one wikipage
     One wikipage may have several lyrics tables
@@ -141,7 +132,7 @@ class ParsedResults:
   """
   title: str
   vlw_page_id: int
-  vdb_ids: List[int]
-  table_ids: List[str]
-  lyrics: Dict[str, ParsedLyricsPlaintext]
-  notes: Dict[str, Dict[str, List[ReferenceItem]]]
+  vdb_ids: List[int] = Field(default_factory=list)
+  table_ids: List[str] = Field(default_factory=list)
+  lyrics: Dict[str, ParsedLyricsPlaintext] = Field(default_factory=dict)
+  notes: Dict[str, Dict[str, List[ReferenceItem]]] = Field(default_factory=dict)
