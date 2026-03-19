@@ -25,9 +25,13 @@ def parse_ids_and_headers(lyrics_table: pq) -> Tuple[str, Dict[str, str], List[s
     to these semantic IDs.
 
     Output:
-    (&lt;Table ID>, &lt;Column IDs>, &lt;Column Headers>)
+    (
+      &lt;Table ID>, 
+      Map[&lt;Column IDs>, &lt;Column Header Text>], 
+      Array[&lt;Column Header Text>]
+    )
   """
-  table_id = str(lyrics_table.attr('id') or "1")
+  table_id = str(lyrics_table.attr('id') or "lyrics-1")[len("lyrics-"):]
   th = lyrics_table.find('tbody tr.lyrics-table-header > th')
   th_ids = {}
   headers = []
@@ -61,16 +65,19 @@ def parse_translators(root: pq, lyrics_table_id: str) -> Dict[str, ParsedTransla
   """
   divs = root.find(f".lyrics-table-{lyrics_table_id}:has(.vlw-translator)")
   for i in range(len(divs)):
-    div = divs.eq(0)
+    div = divs.eq(i)
     tl = div.find('.vlw-translator')
 
     list_classes = [clss[len('lyrics-anchor-'):] for clss in str(div.attr('class')).split(" ") if clss.startswith('lyrics-anchor-')]
     col_id = list_classes[0]
+
+    text = str(tl.text() or "").strip()
     
     if col_id not in res:
       res[col_id] = ParsedTranslators(
         col_id=col_id, 
         translators=[], 
+        text=text,
         is_official=False
       )
     
@@ -93,7 +100,7 @@ def parse_translators(root: pq, lyrics_table_id: str) -> Dict[str, ParsedTransla
   """
   divs = root.find(f".lyrics-table-{lyrics_table_id}:has(.vlw-official-english)")
   for i in range(len(divs)):
-    div = divs.eq(0)
+    div = divs.eq(i)
     list_classes = [clss[len('lyrics-anchor-'):] for clss in str(div.attr('class')).split(" ") if clss.startswith('lyrics-anchor-')]
     if len(list_classes) == 0:
       continue
@@ -143,18 +150,26 @@ def parse_reference_notes(root: pq) -> Dict[str, Dict[str, List[ReferenceItem]]]
         anchor_table = a[0][len('lyrics-table-'):]
       if len(b) > 0:
         anchor_col = b[0][len('lyrics-anchor-'):]
-    
+
+    # Default to these keys if the <references /> are not bound to anything
+    anchor_table = anchor_table or "*"
+    anchor_col = anchor_col or "*"
+    if anchor_table not in ddict:
+      ddict[anchor_table] = {}
+
     res: List[ReferenceItem] = []
-    if ((anchor_table or "1") in ddict) and ((anchor_col or "*") in ddict[anchor_table or "1"]):
-      res = ddict[anchor_table or "1"][anchor_col or "*"]
+    if (anchor_col in ddict[anchor_table]):
+      res = ddict[anchor_table][anchor_col]
     else:
-      ddict[anchor_table or "1"][anchor_col or "*"] = res
+      ddict[anchor_table][anchor_col] = res
 
     """
       Get the text content of the references group
     """
-    references_div = outer_wrapper.find('ol.references')
-    references_items = references_div.find('> li')
+    references_ol = outer_wrapper.find('ol.references')
+    ref_group_name = references_ol.attr('data-mw-group')
+    ref_group_name = str(ref_group_name) if ref_group_name is not None else None
+    references_items = references_ol.children('li')
     counter = 0
     for j in range(len(references_items)):
       ref_item = references_items.eq(j)
@@ -163,9 +178,10 @@ def parse_reference_notes(root: pq) -> Dict[str, Dict[str, List[ReferenceItem]]]
       plaintext = str(ref_item.find('.reference-text').text() or "").strip()
       res.append(
         ReferenceItem(
+          group_name=ref_group_name,
           anchor_hash=anchor_hash, 
           counter=counter, 
-          plaintext=plaintext
+          text=plaintext
         )
       )
   

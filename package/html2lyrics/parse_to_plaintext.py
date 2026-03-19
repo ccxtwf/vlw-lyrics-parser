@@ -29,11 +29,12 @@ def parse(raw_html: str) -> Tuple[List[str], Dict[str, ParsedLyricsPlaintext], D
 
       lyrics_table = lyrics_tables.eq(i)
 
-      table_id, table_col_ids, headers = parse_ids_and_headers(lyrics_table)
+      table_id, map_col_id_to_header, headers = parse_ids_and_headers(lyrics_table)
+      col_ids = list(map_col_id_to_header.keys())
       table_ids.append(table_id)
       parsed_lyrics = ParsedLyricsPlaintext(
         table_id=table_id, 
-        map_ids=table_col_ids, 
+        map_ids=map_col_id_to_header, 
         headers=headers
       )
       res[table_id] = parsed_lyrics
@@ -59,7 +60,7 @@ def parse(raw_html: str) -> Tuple[List[str], Dict[str, ParsedLyricsPlaintext], D
 
           # Account for <td colspan="2">
           while saved_colspan_offset > 0 and i < num_columns:
-            parsed_lyrics.data[headers[i]].append(last_saved_cell_contents)
+            parsed_lyrics.data[col_ids[i]].append(last_saved_cell_contents)
             i += 1
             saved_colspan_offset -= 1
           
@@ -87,14 +88,14 @@ def parse(raw_html: str) -> Tuple[List[str], Dict[str, ParsedLyricsPlaintext], D
           # Account for shared <br /> cells throughout the row
           if i == 0 and n_table_cells == 1 and last_saved_cell_contents == "":
             saved_colspan_offset = num_columns - 1
-          parsed_lyrics.data[headers[i]].append(last_saved_cell_contents)
+          parsed_lyrics.data[col_ids[i]].append(last_saved_cell_contents)
           i += 1
         
         table_cells.each(traverse_cells)
 
         # In the case where <td colspan="2"> is the final or only cell
         while saved_colspan_offset > 0 and i < num_columns:
-          parsed_lyrics.data[headers[i]].append(last_saved_cell_contents)
+          parsed_lyrics.data[col_ids[i]].append(last_saved_cell_contents)
           i += 1
           saved_colspan_offset -= 1
     
