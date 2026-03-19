@@ -3,16 +3,22 @@ from pyquery import PyQuery as pq
 from .. import console, traceback
 from ..classes.collection import ParsedLyricsPlaintext
 
+import re
+
 from typing import List
 
-def parse_lyrics(raw_html: str) -> List[ParsedLyricsPlaintext]:
+def parse(raw_html: str) -> List[ParsedLyricsPlaintext]:
+  d = pq(raw_html)
+  lyrics = _parse_lyrics(d)
+  return lyrics
+
+def _parse_lyrics(d: pq) -> List[ParsedLyricsPlaintext]:
   """
     Parse the lyrics (as plaintext) from the given HTML string
   """
   try:
     res = []
 
-    d = pq(raw_html)
     lyrics_tables = d('.mw-parser-output table.lyrics-table')
     n_tables = len(lyrics_tables)
 
@@ -62,6 +68,9 @@ def parse_lyrics(raw_html: str) -> List[ParsedLyricsPlaintext]:
             except ValueError:
               pass
           
+          # Manipulate the contents of table_cell
+          table_cell = strip_coloured_blocks(table_cell)
+
           # Get text contents of td
           """
           Possible: Convert the HTML of each table cell into some rich text format?
@@ -72,6 +81,7 @@ def parse_lyrics(raw_html: str) -> List[ParsedLyricsPlaintext]:
             saved_colspan_offset = num_columns - 1
           parsed_lyrics.data[headers[i]].append(last_saved_cell_contents)
           i += 1
+        
         table_cells.each(traverse_cells)
 
         # In the case where <td colspan="2"> is the final or only cell
@@ -92,3 +102,25 @@ def parse_lyrics(raw_html: str) -> List[ParsedLyricsPlaintext]:
       style="red"
     )
     raise
+
+def __is_coloured_block(idx: int, node: pq) -> bool:
+  """
+    Filter for:
+    `<span style="color:red;">■</span>`
+    `<span style="color:red;">■<span style="color:green;">■</span></span>`
+    `<span style="color:red;">■</span><span style="color:green;">■</span>`
+  """
+  node = pq(node)
+  has_color_style = (node.css.color or "") != ""  # type: ignore
+  if not has_color_style:
+    return False
+  has_no_content = re.match(r"^\s*■[\s■]*$", (str(node.text() or ""))) is not None
+  return has_no_content
+
+def strip_coloured_blocks(td: pq) -> pq:
+  """
+    Remove `<span style="color:red;">■</span>` from the table cell
+  """
+  remove_blocks = td.find('span, div').filter(__is_coloured_block)
+  remove_blocks.replace_with('')
+  return td
