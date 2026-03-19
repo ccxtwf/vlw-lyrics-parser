@@ -79,6 +79,7 @@ def parse(raw_html: str) -> Tuple[List[str], Dict[str, ParsedLyricsPlaintext], D
           
           # Manipulate the contents of table_cell
           table_cell = __strip_coloured_blocks(table_cell)
+          table_cell = __strip_ruby(table_cell)
 
           # Get text contents of td
           """
@@ -142,4 +143,14 @@ def __strip_coloured_blocks(td: pq) -> pq:
   """
   remove_blocks = td.find('span, div').filter(__is_coloured_block)
   remove_blocks.replace_with('')
+  return td
+
+def __strip_ruby(td: pq) -> pq:
+  """
+    Convert `<ruby><rb>腸</rb><rp>(</rp><rt>はらわた</rt><rp>)</rp></ruby>` -> `腸(はらわた)`
+  """
+  ruby = td.find('ruby')
+  for i in range(len(ruby)):
+    ruby_elements = ruby.eq(i).children().map(lambda i, e: str(pq(this).text() or ""))   # type: ignore
+    ruby.eq(i).replace_with(f"<span>{"".join(ruby_elements)}</span>")
   return td
