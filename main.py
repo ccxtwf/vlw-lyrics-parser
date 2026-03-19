@@ -1,5 +1,5 @@
-from package.io.save_output_sqlite_plaintext import initialize_db
-from package.pipeline.xml_to_html_to_lyrics_plaintext import pipeline
+from vlw_lyrics_parser.io.save_output_sqlite_plaintext import initialize_db
+from vlw_lyrics_parser.pipeline.xml_to_html_to_lyrics_plaintext import pipeline
 
 import asyncio
 
