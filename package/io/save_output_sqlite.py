@@ -1,12 +1,15 @@
 import sqlite3
 
+from os.path import abspath
+
 from .. import console, traceback
 from ..classes.collection import ParsedResults
 
 from typing import List, Optional
 
 def initialize_db(db_filepath: str):
-  print(f"Creating SQLite3 Database at {db_filepath}")
+  db_filepath = abspath(db_filepath)
+  console.print(f"Creating an SQLITE Database at {db_filepath}", style="magenta")
   db_conn = sqlite3.connect(db_filepath)
   db_cursor = db_conn.cursor()
   db_cursor.execute("DROP TABLE IF EXISTS VLW_PAGES;")

@@ -17,7 +17,7 @@ async def read_dump(dump_file_path: str, max_pages_to_unpack_at_a_time: int, bat
     to call the MediaWiki action=parse API
   """
   try:
-    console.print("Opening the file: ", dump_file_path, style="magenta")
+    console.print("Opening file: ", dump_file_path, style="magenta")
     tree = ET.parse(dump_file_path)
     root = tree.getroot()
     xml_iter = iter(root)
@@ -34,7 +34,7 @@ async def read_dump(dump_file_path: str, max_pages_to_unpack_at_a_time: int, bat
       style="red"
     )
   finally:
-    console.print("Finished reading the file: ", dump_file_path, style="green")
+    console.print("Finished reading: ", dump_file_path, style="green")
 
 def get_page_properties(xmlTree: ET.Element) -> Tuple[str, int]:
   try:
