@@ -8,7 +8,7 @@ from ..io.read_xml_dump import read_dump, get_page_contents, get_page_properties
 from ..io.save_output_sqlite import save_lyrics
 from ..wikitext2html.mediawiki_action_api_parser import render_html
 from ..html2lyrics.utils import get_vocadb_ids
-from ..html2lyrics.parse_to_plaintext import parse_lyrics
+from ..html2lyrics.parse_to_plaintext import parse
 
 from typing import Optional, Tuple
 
@@ -47,13 +47,15 @@ async def treat_page(node: ET.Element) -> Optional[ParsedResults]:
     page_contents = get_page_contents(node)
     parsed_html, iw_links, external_links = await render_html(page_contents)
     vdb_ids = get_vocadb_ids(iw_links, external_links)
-    lyrics = parse_lyrics(parsed_html)
+    table_ids, parsed_data, notes = parse(parsed_html)
 
     res = ParsedResults(
-      title=title, # type: ignore
+      title=title,
       vlw_page_id=page_id, 
       vdb_ids=vdb_ids, 
-      lyrics=lyrics
+      table_ids=table_ids,
+      lyrics=parsed_data,
+      notes=notes,
     )
     return res
   

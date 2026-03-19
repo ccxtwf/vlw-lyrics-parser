@@ -1,23 +1,26 @@
 from pyquery import PyQuery as pq
 
 from .. import console, traceback
-from ..classes.collection import ParsedLyricsPlaintext
+from ..classes.collection import ParsedLyricsPlaintext, ReferenceItem
+from .parse_properties import parse_ids_and_headers, parse_translators, parse_reference_notes
 
 import re
 
-from typing import List
+from typing import Dict, Tuple, List
 
-def parse(raw_html: str) -> List[ParsedLyricsPlaintext]:
-  d = pq(raw_html)
-  lyrics = _parse_lyrics(d)
-  return lyrics
-
-def _parse_lyrics(d: pq) -> List[ParsedLyricsPlaintext]:
+def parse(raw_html: str) -> Tuple[List[str], Dict[str, ParsedLyricsPlaintext], Dict[str, Dict[str, List[ReferenceItem]]]]:
   """
     Parse the lyrics (as plaintext) from the given HTML string
+
+    Output:
+    ( Array[ &lt;TABLE_ID> ], Map[ &lt;TABLE ID>, &lt;PARSED LYRICS & OTHER INFO> ] )
   """
   try:
-    res = []
+    table_ids: List[str] = []
+    res: Dict[str, ParsedLyricsPlaintext] = {}
+    notes: Dict[str, Dict[str, List[ReferenceItem]]] = {}
+
+    d = pq(raw_html)
 
     lyrics_tables = d('.mw-parser-output table.lyrics-table')
     n_tables = len(lyrics_tables)
@@ -26,9 +29,14 @@ def _parse_lyrics(d: pq) -> List[ParsedLyricsPlaintext]:
 
       lyrics_table = lyrics_tables.eq(i)
 
-      headers: List[str] = lyrics_table.find('tbody tr.lyrics-table-header > th').map(lambda _, node: pq(node).text())
-      parsed_lyrics = ParsedLyricsPlaintext(headers)
-      res.append(parsed_lyrics)
+      table_id, table_col_ids, headers = parse_ids_and_headers(lyrics_table)
+      table_ids.append(table_id)
+      parsed_lyrics = ParsedLyricsPlaintext(
+        table_id=table_id, 
+        map_ids=table_col_ids, 
+        headers=headers
+      )
+      res[table_id] = parsed_lyrics
 
       # Assume that the number of columns in a table is less than or equal to 
       # the number of headers in the table
@@ -69,13 +77,13 @@ def _parse_lyrics(d: pq) -> List[ParsedLyricsPlaintext]:
               pass
           
           # Manipulate the contents of table_cell
-          table_cell = strip_coloured_blocks(table_cell)
+          table_cell = __strip_coloured_blocks(table_cell)
 
           # Get text contents of td
           """
           Possible: Convert the HTML of each table cell into some rich text format?
           """
-          last_saved_cell_contents = table_cell.text().strip()  # type: ignore
+          last_saved_cell_contents = str(table_cell.text() or "").strip()
           # Account for shared <br /> cells throughout the row
           if i == 0 and n_table_cells == 1 and last_saved_cell_contents == "":
             saved_colspan_offset = num_columns - 1
@@ -92,7 +100,14 @@ def _parse_lyrics(d: pq) -> List[ParsedLyricsPlaintext]:
     
       table_rows.each(traverse_rows)
 
-    return res
+      try:
+        res[table_id].translators = parse_translators(d, lyrics_table_id=table_id)
+      except:
+        pass
+      
+    notes = parse_reference_notes(d)
+
+    return (table_ids, res, notes)
   
   except Exception:
     console.print(
@@ -106,8 +121,11 @@ def _parse_lyrics(d: pq) -> List[ParsedLyricsPlaintext]:
 def __is_coloured_block(idx: int, node: pq) -> bool:
   """
     Filter for:
+    
     `<span style="color:red;">■</span>`
+    
     `<span style="color:red;">■<span style="color:green;">■</span></span>`
+    
     `<span style="color:red;">■</span><span style="color:green;">■</span>`
   """
   node = pq(node)
@@ -117,7 +135,7 @@ def __is_coloured_block(idx: int, node: pq) -> bool:
   has_no_content = re.match(r"^\s*■[\s■]*$", (str(node.text() or ""))) is not None
   return has_no_content
 
-def strip_coloured_blocks(td: pq) -> pq:
+def __strip_coloured_blocks(td: pq) -> pq:
   """
     Remove `<span style="color:red;">■</span>` from the table cell
   """
