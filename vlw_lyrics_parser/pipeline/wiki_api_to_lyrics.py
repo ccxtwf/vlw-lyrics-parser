@@ -32,7 +32,7 @@ def pipeline(
     saves the parsed results into a JSON file
   """
   if lyrics_format != 'plaintext':
-    raise NotImplementedError
+    raise NotImplementedError("Can only parse plaintext lyrics")
 
   if output_format == 'json' and json_filepath is None:
     console.print(f"A JSON filepath has to be specified! Switching to output_format = 'console'", style="red")

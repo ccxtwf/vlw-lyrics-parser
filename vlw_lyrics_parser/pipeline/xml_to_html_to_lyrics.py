@@ -25,7 +25,7 @@ async def pipeline(
     and finally saving the parsed results into a SQLITE database or JSON file
   """
   if lyrics_format != 'plaintext':
-    raise NotImplementedError
+    raise NotImplementedError("Can only parse plaintext lyrics")
 
   MAX_PAGES_TO_UNPACK = getenv("MW_XML_UNPACK_MAX_NUM_PAGES") or "10"
 
