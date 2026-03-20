@@ -11,14 +11,22 @@ from ..wikitext2html.mediawiki_action_api_parser import render_html
 from ..html2lyrics.utils import get_vocadb_ids
 from ..html2lyrics.parse_to_plaintext import parse
 
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Literal
 
-async def pipeline(xml_dump_file_path: str, output_file_path: str, as_sql_db: bool = False) -> None:
+async def pipeline(
+    xml_dump_file_path: str, 
+    output_file_path: str, 
+    lyrics_format: Literal['plaintext'] = 'plaintext',
+    output_format: Literal['sqlite', 'json'] = 'json'
+  ) -> None:
   """
     A pipeline to convert/parse several wiki pages (in the format of a MediaWiki XML dump)
     into HTML, then into a structured object containing the parsed lyrics (in plaintext), 
     and finally saving the parsed results into a SQLITE database or JSON file
   """
+  if lyrics_format != 'plaintext':
+    raise NotImplementedError
+
   MAX_PAGES_TO_UNPACK = getenv("MW_XML_UNPACK_MAX_NUM_PAGES") or "10"
 
   async def treat_batch(batch: Tuple[ET.Element, ...]) -> None:
@@ -31,7 +39,8 @@ async def pipeline(xml_dump_file_path: str, output_file_path: str, as_sql_db: bo
     )
     await waitTasks
     batch_results = waitTasks.result()
-    if as_sql_db:
+    
+    if output_format == 'sqlite':
       save_lyrics_sqlite(output_file_path, batch_results)
     else:
       save_lyrics_json(output_file_path, batch_results)

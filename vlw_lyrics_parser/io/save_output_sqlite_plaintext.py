@@ -9,8 +9,10 @@ from typing import List, Optional, Tuple, Literal
 
 def initialize_db(db_filepath: str):
   """
-    Clears any data (if a database exists at the given path) and rebuilds the 
-    schema as below 
+    Initialize a SQLITE database for storing plaintext lyrics.
+
+    If a database exists at the given path, then data in the existing tables will 
+    be cleared and the schema rebuilt.
   """
   db_filepath = abspath(db_filepath)
   console.print(f"Creating an SQLITE Database at {db_filepath}", style="magenta")
