@@ -53,9 +53,6 @@ class ReferenceItem(BaseModel):
     return f"[{self.group_name + " " if self.group_name is not None else ""}{self.counter}] {self.text}"
 
 class ParsedLyrics(ABC, BaseModel):
-  """
-    A superclass 
-  """
   headers: List[str] = Field(default_factory=list)
   table_id: str
   map_ids: Dict[str, str] = Field(default_factory=dict)
@@ -104,7 +101,6 @@ class ParsedLyricsPlaintext(ParsedLyrics):
     return { id: "\n".join(l) for id, l in self.data.items() }
 
 class ParsedResults(BaseModel, ABC):
-  """"""
   title: str
   vlw_page_id: int
   vdb_ids: List[int] = Field(default_factory=list)
