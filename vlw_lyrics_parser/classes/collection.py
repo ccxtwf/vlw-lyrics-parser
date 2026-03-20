@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, computed_field
 
 from typing import Any, List, Dict
 
@@ -84,12 +84,17 @@ class ParsedLyricsPlaintext(BaseModel):
   headers: List[str] = Field(default_factory=list)
   table_id: str
   map_ids: Dict[str, str] = Field(default_factory=dict)
-  data: Dict[str, List[str]] = Field(default_factory=dict)
+  data: Dict[str, List[str]] = Field(default_factory=dict, exclude=True)
   translators: Dict[str, ParsedTranslators] | None = None
   # notes: Dict[str, List[ReferenceItem]]
 
   def model_post_init(self, __context=None):
     self.data = { id: [] for id in self.map_ids }
+
+  @computed_field
+  @property
+  def lyrics(self) -> Dict[str, str]:
+    return { id: "\n".join(l) for id, l in self.data.items() }
 
 class ParsedResults(BaseModel):
   """
