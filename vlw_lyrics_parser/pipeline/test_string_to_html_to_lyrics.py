@@ -1,9 +1,9 @@
 from .. import console, traceback, JSON_INDENTATION
 
-from vlw_lyrics_parser.classes.collection import ParsedResults
+from vlw_lyrics_parser.classes.collection import ParsedResultsPlaintext
 
 from vlw_lyrics_parser.wikitext2html.mediawiki_action_api_parser import render_html
-from vlw_lyrics_parser.html2lyrics.parse_to_plaintext import parse
+from vlw_lyrics_parser.html2lyrics.parse_to_plaintext import parse_to_plaintext
 from vlw_lyrics_parser.html2lyrics.utils import get_vocadb_ids
 
 from typing import Literal
@@ -30,9 +30,9 @@ async def pipeline(
 
   parsed_html, iw_links, external_links = await render_html(wikitext)
   vdb_ids = get_vocadb_ids(iw_links, external_links)
-  table_ids, parsed_data, notes = parse(parsed_html)
+  table_ids, parsed_data, notes = parse_to_plaintext(parsed_html)
 
-  res = ParsedResults(
+  res = ParsedResultsPlaintext(
     title="TEST STRING",
     vlw_page_id=0, 
     vdb_ids=vdb_ids, 

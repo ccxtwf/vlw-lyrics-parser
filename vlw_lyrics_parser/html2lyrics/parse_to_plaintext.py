@@ -8,7 +8,7 @@ import re
 
 from typing import Dict, Tuple, List
 
-def parse(raw_html: str) -> Tuple[List[str], Dict[str, ParsedLyricsPlaintext], Dict[str, Dict[str, List[ReferenceItem]]]]:
+def parse_to_plaintext(raw_html: str) -> Tuple[List[str], Dict[str, ParsedLyricsPlaintext], Dict[str, Dict[str, List[ReferenceItem]]]]:
   """
     Parse the lyrics (as plaintext) from the given HTML string
 

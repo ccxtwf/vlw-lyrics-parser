@@ -3,7 +3,7 @@ import sqlite3
 from os.path import abspath
 
 from .. import console, traceback
-from ..classes.collection import ParsedResults
+from ..classes.collection import ParsedResultsPlaintext
 
 from typing import List, Optional, Tuple, Literal
 
@@ -52,7 +52,7 @@ def initialize_db(db_filepath: str):
     );""")
   # No index, sorry
 
-def save_lyrics_sqlite(db_filepath: str, batch_results: List[Optional[ParsedResults]]):
+def save_lyrics_sqlite(db_filepath: str, batch_results: List[Optional[ParsedResultsPlaintext]]):
   """
     Save the parsed lyrics to a SQLITE database
   """

@@ -1,13 +1,13 @@
 from .. import console, traceback, getenv, JSON_INDENTATION
 
-from vlw_lyrics_parser.classes.collection import ParsedResults
+from vlw_lyrics_parser.classes.collection import ParsedResultsPlaintext
 
 from vlw_lyrics_parser.wikitext2html.mediawiki_action_api_parser import (
   prepare_api_headers, 
   prepare_api_payload, 
   handle_api_response
 )
-from vlw_lyrics_parser.html2lyrics.parse_to_plaintext import parse
+from vlw_lyrics_parser.html2lyrics.parse_to_plaintext import parse_to_plaintext
 from vlw_lyrics_parser.html2lyrics.utils import get_vocadb_ids
 
 import requests
@@ -51,9 +51,9 @@ def pipeline(
     parsed_html, iw_links, external_links = handle_api_response(data)
 
   vdb_ids = get_vocadb_ids(iw_links, external_links)
-  table_ids, parsed_data, notes = parse(parsed_html)
+  table_ids, parsed_data, notes = parse_to_plaintext(parsed_html)
 
-  res = ParsedResults(
+  res = ParsedResultsPlaintext(
     title=title_from_api,
     vlw_page_id=pageid_from_api, 
     vdb_ids=vdb_ids, 

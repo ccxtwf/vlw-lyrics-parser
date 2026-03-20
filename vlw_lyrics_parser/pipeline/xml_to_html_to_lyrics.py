@@ -2,14 +2,14 @@ import xml.etree.ElementTree as ET
 import asyncio
 
 from .. import console, traceback, getenv
-from ..classes.collection import ParsedResults
+from ..classes.collection import ParsedResultsPlaintext
 
 from ..io.read_xml_dump import read_dump, get_page_contents, get_page_properties
 from ..io.save_output_sqlite_plaintext import save_lyrics_sqlite
 from ..io.save_output_json_plaintext import save_lyrics_json
 from ..wikitext2html.mediawiki_action_api_parser import render_html
 from ..html2lyrics.utils import get_vocadb_ids
-from ..html2lyrics.parse_to_plaintext import parse
+from ..html2lyrics.parse_to_plaintext import parse_to_plaintext
 
 from typing import Optional, Tuple, Literal
 
@@ -51,7 +51,7 @@ async def pipeline(
     batch_callback=treat_batch
   )
 
-async def treat_page(node: ET.Element) -> Optional[ParsedResults]:
+async def treat_page(node: ET.Element) -> Optional[ParsedResultsPlaintext]:
   """
     Coroutine for each individual page
   """
@@ -60,9 +60,9 @@ async def treat_page(node: ET.Element) -> Optional[ParsedResults]:
     page_contents = get_page_contents(node)
     parsed_html, iw_links, external_links = await render_html(page_contents)
     vdb_ids = get_vocadb_ids(iw_links, external_links)
-    table_ids, parsed_data, notes = parse(parsed_html)
+    table_ids, parsed_data, notes = parse_to_plaintext(parsed_html)
 
-    res = ParsedResults(
+    res = ParsedResultsPlaintext(
       title=title,
       vlw_page_id=page_id, 
       vdb_ids=vdb_ids, 
