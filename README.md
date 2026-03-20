@@ -41,6 +41,11 @@ MW_XML_UNPACK_MAX_NUM_PAGES=20
 
 ## Usage
 
+You can either use this package as part of another Python script/project, or use the provided command line interface (CLI). To start interacting with the CLI, run the following command:
+```sh
+python main.py -h
+```
+
 ### Parsing lyrics from a wiki page
 
 The following snippet shows how you may use this package to parse lyrics from the Vocaloid Lyrics Wiki:
@@ -63,6 +68,15 @@ parse_lyrics_from_wiki_api(
   json_filepath='vlw_test.json',
   output_format='json'
 )
+```
+
+Alternatively, you can use the CLI:
+```sh
+# Prints to console
+python main.py api -t "ハローワールド (Hello World)" -ua "<Custom User Agent>"
+
+# Save as JSON 
+python main.py api -t "ハローワールド (Hello World)" -o "/path/to/file.json" -ua "<Custom User Agent>"
 ```
 
 ### Parsing a test string into lyrics
@@ -106,6 +120,11 @@ asyncio.run(
 )
 ```
 
+Alternatively, you can use the CLI:
+```sh
+python main.py str "<WIKITEXT>"
+```
+
 ### Parsing a MediaWiki export dump into plaintext lyrics
 
 The following snippet parses a MediaWiki XML dump into a set of plaintext lyrics that are saved onto a SQLITE database.
@@ -146,4 +165,9 @@ asyncio.run(
     output_format='json'
   )
 )
+```
+
+The equivalent CLI command is:
+```sh
+python main.py xml "/path/to/xml" "/path/to/output"
 ```
