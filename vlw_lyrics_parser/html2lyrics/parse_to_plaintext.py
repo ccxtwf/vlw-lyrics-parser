@@ -120,6 +120,17 @@ def parse_to_plaintext(raw_html: str) -> Tuple[List[str], Dict[str, ParsedLyrics
       except:
         pass
       
+    poem_divs = d('.mw-parser-output .poem')
+    for i in range(len(poem_divs)):
+      id = f"___poem-{i+1}"
+      poem_div = poem_divs.eq(i)
+      a = ParsedLyrics[str](
+        headers=["*"],
+        table_id=id,
+      )
+      a.data["*"] = [str(poem_div.text())]
+      res["*"] = a
+    
     notes = parse_reference_notes(d)
 
     return (table_ids, res, notes)
