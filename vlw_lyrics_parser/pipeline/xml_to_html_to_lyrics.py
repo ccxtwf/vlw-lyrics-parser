@@ -2,9 +2,9 @@ import xml.etree.ElementTree as ET
 import asyncio
 
 from .. import console, traceback, getenv
-from ..classes.collection import ParsedResultsPlaintext
+from ..classes.collection import ParsedResults
 from ..classes.exceptions import FileWriteExceededMaxAttempts
-from ..classes.types import LyricFormat, MassOutputFileFormat, TParsedResults
+from ..classes.types import LyricFormat, MassOutputFileFormat
 
 from ..io.read_xml_dump import read_dump, get_page_contents, get_page_properties
 from ..io.save_output_sqlite import save_lyrics_sqlite_plaintext
@@ -123,8 +123,8 @@ def __treat_batch(
       await queue.put(res)
   return _fn
 
-def __treat_page(lyrics_format: LyricFormat) -> Callable[[ET.Element], Coroutine[Any, Any, Optional[TParsedResults]]]:
-  async def _fn(node: ET.Element) -> Optional[TParsedResults]:
+def __treat_page(lyrics_format: LyricFormat) -> Callable[[ET.Element], Coroutine[Any, Any, Optional[ParsedResults[Any]]]]:
+  async def _fn(node: ET.Element) -> Optional[ParsedResults[Any]]:
     """
       Coroutine for each individual page
     """
@@ -136,7 +136,7 @@ def __treat_page(lyrics_format: LyricFormat) -> Callable[[ET.Element], Coroutine
       
       if lyrics_format == "plaintext":
         table_ids, parsed_data, notes = parse_to_plaintext(parsed_html)
-        res = ParsedResultsPlaintext(
+        res = ParsedResults[str](
           title=title,
           vlw_page_id=page_id, 
           vdb_ids=vdb_ids, 

@@ -1,6 +1,6 @@
 from .. import console, traceback, JSON_INDENTATION
 
-from ..classes.collection import ParsedResultsPlaintext
+from ..classes.collection import ParsedResults
 from ..classes.types import LyricFormat, OutputFileFormat
 
 from ..wikitext2html.mediawiki_action_api_parser import render_html
@@ -16,7 +16,7 @@ async def pipeline(
   """
     A pipeline to convert a given portion of wikitext into a structured 
     object containing the parsed lyrics (in plaintext) and finally
-    saving the parsed results into a JSON file
+    saving the parsed results into a JSON file.
   """
   if lyrics_format != 'plaintext':
     raise NotImplementedError("Can only parse plaintext lyrics")
@@ -33,7 +33,7 @@ async def pipeline(
   if lyrics_format == "plaintext":
     table_ids, parsed_data, notes = parse_to_plaintext(parsed_html)
 
-    res = ParsedResultsPlaintext(
+    res = ParsedResults[str](
       title="TEST STRING",
       vlw_page_id=0, 
       vdb_ids=vdb_ids, 

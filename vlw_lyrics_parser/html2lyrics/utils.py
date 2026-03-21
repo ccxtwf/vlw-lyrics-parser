@@ -6,15 +6,16 @@ import re
 
 def get_vocadb_ids(iw_links: List[str], external_links: List[str]) -> List[int]:
   """
-    Sample input:
+    Parses the numerical song page IDs of links pointing to VocaDB.
 
-    `iw_links`
+    Parameters:
+        iw_links (List[str]):       Sample input:
+                                    ["vdb:S/242985", "vdb:  S/242985", "vdb:___S/242985", "vdb:S/242985a"]
+        external_links (List[str]): Sample input:
+                                    ["https://vocadb.net/S/242985", "https://utaten.net"]
     
-    ["vdb:S/242985", "vdb:  S/242985", "vdb:___S/242985", "vdb:S/242985a"]
-
-    `external_links`
-    
-    ["https://vocadb.net/S/242985", "https://utaten.net"]
+    Returns:
+        List[int]:                  List of IDs
   """
   res = []
   for iw_link in iw_links:

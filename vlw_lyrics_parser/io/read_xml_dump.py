@@ -19,6 +19,13 @@ async def read_dump(
   """
     Reads the given XML dump file, unpacks several pages at a time, then starts an async task 
     to call the MediaWiki `action=parse` API
+
+    Parameters:
+        dump_file_path (str):
+        max_pages_to_unpack_at_a_time (int):
+                                      Number of XML nodes to unpack at a time
+        batch_callback ((ET.Element[]) -> Awaitable):
+                                      Callback to execute upon yielding a batch of XML nodes
   """
   try:
     console.print("Opening file: ", dump_file_path, style="magenta")
@@ -41,6 +48,12 @@ def iterate_xml(dump_file_path: str):
     Overly simplistic XML parser
     
     Will prolly break over malformed XML or incorrectly formatted XML
+    
+    Parameters:
+        dump_file_path (str):
+    
+    Yields:
+        ET.Element:       An XML node representing a wikipage
   """
   xml_iter = ET.iterparse(dump_file_path, events=['start', 'end'])
   # last_tag = None
@@ -60,6 +73,14 @@ def iterate_xml(dump_file_path: str):
     cur = next(xml_iter, None)
 
 def get_page_properties(xmlTree: ET.Element) -> Tuple[str, int]:
+  """    
+    Parameters:
+        xmlTree (ET.Element):
+                          An XML node representing a wikipage
+    
+    Returns:
+        ( str, int ):     The page title and the numeric page ID       
+  """
   try:
     title = xmlTree.find(f"{XML_NAMESPACE}title")
     if title is None or title.text is None:
@@ -85,6 +106,13 @@ def get_page_contents(xmlTree: ET.Element) -> str:
     This function assumes that there can only be one <revision> element in one <page> element
     If you exported only the latest revision of the pages, then you shouldn't worry.
     If you exported the full history, worry more.
+    
+    Parameters:
+        xmlTree (ET.Element):
+                          An XML node representing a wikipage
+    
+    Returns:
+        str:              Page contents
   """
   try: 
     if xmlTree.tag != f"{XML_NAMESPACE}page":

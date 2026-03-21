@@ -3,7 +3,7 @@ import sqlite3
 from os.path import abspath, join
 
 from .. import console, traceback
-from ..classes.collection import ParsedResultsPlaintext
+from ..classes.collection import ParsedResults
 
 from typing import List, Tuple, Literal
 
@@ -13,6 +13,10 @@ def initialize_db(output_directory: str, filename: str):
 
     If a database exists at the given path, then data in the existing tables will 
     be cleared and the schema rebuilt.
+    
+    Parameters:
+        output_directory (str):
+        filename (str):
   """
   filename = abspath(join(output_directory, filename))
   console.print(f"Creating an SQLITE Database at {filename}", style="magenta")
@@ -55,9 +59,13 @@ def initialize_db(output_directory: str, filename: str):
   db_conn.commit()
   db_conn.close()
 
-def save_lyrics_sqlite_plaintext(db_filepath: str, batch_results: List[ParsedResultsPlaintext]):
+def save_lyrics_sqlite_plaintext(db_filepath: str, batch_results: List[ParsedResults[str]]):
   """
-    Save the parsed plaintext lyrics to a SQLITE database
+    Save the parsed plaintext lyrics to a SQLITE database.
+    
+    Parameters:
+        db_filepath (str):
+        batch_results (List[ParsedResults[str]]):
   """
   # Aggregate
   dto_pages: List[Tuple[int, str]] = []

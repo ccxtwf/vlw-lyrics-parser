@@ -24,12 +24,20 @@ def parse_ids_and_headers(lyrics_table: pq) -> Tuple[str, Dict[str, str], List[s
     will then have the CSS classes `lyrics-jp`, `lyrics-rom`, and `lyrics-eng` corresponding 
     to these semantic IDs.
 
-    Output:
-    (
-      &lt;Table ID>, 
-      Map[&lt;Column IDs>, &lt;Column Header Text>], 
-      Array[&lt;Column Header Text>]
-    )
+    Parameters:
+        lyrics_table (PyQuery):   PyQuery document object representing a lyrics table
+    
+    Returns:
+        ( &lt;TABLE_ID&gt;, &lt;TABLE_COLUMN_ID_HASHMAP&gt;, &lt;TABLE_COLUMN_HEADERS&gt; ):
+                                  `TABLE_ID` (str) is the semantic ID of the table.
+
+                                  `TABLE_COLUMN_ID_HASHMAP` (Dict[str, str]) is a 
+                                  dictionary mapping the semantic ID of each column
+                                  with the column headers
+
+                                  `TABLE_COLUMN_HEADERS` (List[str]) is a list
+                                  of plaintext representations of the table column
+                                  headers 
   """
   table_id = str(lyrics_table.attr('id') or "lyrics-1")[len("lyrics-"):]
   th = lyrics_table.find('tbody tr.lyrics-table-header > th')
@@ -48,15 +56,21 @@ def parse_translators(root: pq, lyrics_table_id: str) -> Dict[str, ParsedTransla
   """
     Parse the names of the translator who worked on the translation. 
 
-    Official translations are marked by the {{OfficialEnglishNotify}}
+    Official translations are marked by the `{{OfficialEnglishNotify}}`
     template.
 
-    The translation credits is marked by the {{Translator}} template on VLW.
+    The translation credits is marked by the `{{Translator}}` template on VLW.
     Each translation credits is bound to the `eng` column (or a custom column)
     on the lyrics table.
 
-    Output:
-    Map[&lt;COLUMN ID>, ParsedTranslators]
+    Parameters:
+        root (PyQuery):                 PyQuery document root
+        lyrics_table_id (str):          Semantic ID of the table
+
+    Returns:
+        ( Dict[str, ParsedTranslators] ):   
+                                        A dictionary mapping the semantic column
+                                        of the ID with the parsed translators info
   """
   res: Dict[str, ParsedTranslators] = {}
   
@@ -125,8 +139,15 @@ def parse_reference_notes(root: pq) -> Dict[str, Dict[str, List[ReferenceItem]]]
     noting about something in the lyrics and/or translation, and reference groups 
     that are not.
 
-    Output:
-    Map[&lt;TABLE ID>, Map[&lt;COLUMN ID>, &lt;REFERENCE GROUPS>]]
+    Parameters:
+        root (PyQuery):                 PyQuery document root
+    
+    Returns:
+        ( Dict[str, Dict[str, List[ReferenceItem]]] ):
+                                        A dictionary mapping the semantic ID of the
+                                        table, with another dictionary mapping the 
+                                        semantic column ID of the table with the 
+                                        parsed reference item
   """
   ddict: Dict[str, Dict[str, List[ReferenceItem]]] = {}
   outer_wrappers = root.find('.references-small')

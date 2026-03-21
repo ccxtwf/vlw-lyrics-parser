@@ -1,23 +1,36 @@
 from pyquery import PyQuery as pq
 
 from .. import console, traceback
-from ..classes.collection import ParsedLyricsPlaintext, ReferenceItem
+from ..classes.collection import ParsedLyrics, ReferenceItem
 from .parse_properties import parse_ids_and_headers, parse_translators, parse_reference_notes
 
 import re
 
 from typing import Dict, Tuple, List
 
-def parse_to_plaintext(raw_html: str) -> Tuple[List[str], Dict[str, ParsedLyricsPlaintext], Dict[str, Dict[str, List[ReferenceItem]]]]:
+def parse_to_plaintext(raw_html: str) -> Tuple[List[str], Dict[str, ParsedLyrics[str]], Dict[str, Dict[str, List[ReferenceItem]]]]:
   """
     Parse the lyrics (as plaintext) from the given HTML string
 
+    Parameters:
+        raw_html (str):       Raw HTML string
+    
+    Returns:
+        ( &lt;TABLE_IDS&gt;, &lt;PARSED_LYRICS&gt;, &lt;PARSED_REFERENCE_NOTES&gt; ):
+                              `TABLE_IDS` (List[str]) is the list of semantic IDs of 
+                              each table
+                              `PARSED_LYRICS` (Dict[str, ParsedLyrics[str]]) is a
+                              dictionary mapping the semantic ID of each table with
+                              the parsed lyrics
+                              `PARSED_REFERENCE_NOTES` (Dict[str, Dict[str, List[ReferenceItem]]]) 
+                              is a dictionary mapping the semantic ID of each table 
+                              with the parsed notes
     Output:
     ( Array[ &lt;TABLE_ID> ], Map[ &lt;TABLE ID>, &lt;PARSED LYRICS & OTHER INFO> ] )
   """
   try:
     table_ids: List[str] = []
-    res: Dict[str, ParsedLyricsPlaintext] = {}
+    res: Dict[str, ParsedLyrics[str]] = {}
     notes: Dict[str, Dict[str, List[ReferenceItem]]] = {}
 
     d = pq(raw_html)
@@ -32,7 +45,7 @@ def parse_to_plaintext(raw_html: str) -> Tuple[List[str], Dict[str, ParsedLyrics
       table_id, map_col_id_to_header, headers = parse_ids_and_headers(lyrics_table)
       col_ids = list(map_col_id_to_header.keys())
       table_ids.append(table_id)
-      parsed_lyrics = ParsedLyricsPlaintext(
+      parsed_lyrics = ParsedLyrics[str](
         table_id=table_id, 
         map_ids=map_col_id_to_header, 
         headers=headers
