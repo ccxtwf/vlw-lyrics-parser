@@ -11,19 +11,19 @@ from collections.abc import Callable, Awaitable
 
 XML_NAMESPACE = getenv("MW_XML_DUMP_NAMESPACE")
 
-async def read_dump(dump_file_path: str, max_pages_to_unpack_at_a_time: int, batch_callback: Callable[[Tuple[ET.Element, ...]], Awaitable]) -> None:
+async def read_dump(
+    dump_file_path: str, 
+    max_pages_to_unpack_at_a_time: int, 
+    batch_callback: Callable[[Tuple[ET.Element, ...]], Awaitable]
+  ) -> None:
   """
     Reads the given XML dump file, unpacks several pages at a time, then starts an async task 
-    to call the MediaWiki action=parse API
+    to call the MediaWiki `action=parse` API
   """
   try:
     console.print("Opening file: ", dump_file_path, style="magenta")
-    tree = ET.parse(dump_file_path)
-    root = tree.getroot()
-    xml_iter = iter(root)
-    next(xml_iter)  # Skip siteinfo
     
-    for batch in batched(xml_iter, max_pages_to_unpack_at_a_time):
+    for batch in batched(iterate_xml(dump_file_path), max_pages_to_unpack_at_a_time):
       await batch_callback(batch)
     
   except Exception:
@@ -35,6 +35,29 @@ async def read_dump(dump_file_path: str, max_pages_to_unpack_at_a_time: int, bat
     )
   finally:
     console.print("Finished reading: ", dump_file_path, style="green")
+
+def iterate_xml(dump_file_path: str):
+  """
+    Overly simplistic XML parser
+    
+    Will prolly break over malformed XML or incorrectly formatted XML
+  """
+  xml_iter = ET.iterparse(dump_file_path, events=['start', 'end'])
+  # last_tag = None
+  is_open = False
+  root = None
+  cur = next(xml_iter, None)
+  while cur:
+    event, element = cur
+    if event == "start" and not is_open and element.tag in [f"{XML_NAMESPACE}page"]:
+      is_open = True
+      root = element
+      # last_tag = element.tag
+    elif event == "end" and root is not None and element.tag == root.tag:
+      yield root
+      is_open = False
+      root = None
+    cur = next(xml_iter, None)
 
 def get_page_properties(xmlTree: ET.Element) -> Tuple[str, int]:
   try:
@@ -51,12 +74,6 @@ def get_page_properties(xmlTree: ET.Element) -> Tuple[str, int]:
     return (title, page_id)
   
   except Exception:
-    console.print(
-      f"Failed to treat the page \"{title}\". Got the following error: ", 
-      traceback.format_exc(), 
-      sep="\n", 
-      style="red"
-    )
     raise
 
 def get_page_contents(xmlTree: ET.Element) -> str:
@@ -81,10 +98,4 @@ def get_page_contents(xmlTree: ET.Element) -> str:
     contents = unescape(contents.text)
     return contents
   except Exception:
-    console.print(
-      f"Failed to get the page contents. Got the following error: ", 
-      traceback.format_exc(), 
-      sep="\n", 
-      style="red"
-    )
     raise

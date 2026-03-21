@@ -3,3 +3,6 @@ class ReadXmlException(Exception):
 
 class ReadMediawikiException(Exception):
   pass
+
+class FileWriteExceededMaxAttempts(IOError):
+  pass

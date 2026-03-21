@@ -3,21 +3,32 @@ import asyncio
 
 from .. import console, traceback, getenv
 from ..classes.collection import ParsedResultsPlaintext
+from ..classes.exceptions import FileWriteExceededMaxAttempts
+from ..classes.types import LyricFormat, MassOutputFileFormat, TParsedResults
 
 from ..io.read_xml_dump import read_dump, get_page_contents, get_page_properties
-from ..io.save_output_sqlite_plaintext import save_lyrics_sqlite
-from ..io.save_output_json_plaintext import save_lyrics_json
+from ..io.save_output_sqlite import save_lyrics_sqlite_plaintext
+from ..io.save_output_json import save_lyrics_json
 from ..wikitext2html.mediawiki_action_api_parser import render_html
 from ..html2lyrics.utils import get_vocadb_ids
 from ..html2lyrics.parse_to_plaintext import parse_to_plaintext
 
-from typing import Optional, Tuple, Literal
+from typing import Optional, List, Tuple, Any
+from collections.abc import Callable, Coroutine, Awaitable
+from os.path import join, exists
+import re
+
+MAX_PAGES_TO_UNPACK = int(getenv("MW_XML_UNPACK_MAX_NUM_PAGES", "10"))
+JSON_DUMP_BATCH_SIZE = int(getenv("JSON_DUMP_BATCH_SIZE", "50"))
+SQL_INSERT_BATCH_SIZE = int(getenv("SQL_INSERT_BATCH_SIZE", "50"))
 
 async def pipeline(
     xml_dump_file_path: str, 
-    output_file_path: str, 
-    lyrics_format: Literal['plaintext'] = 'plaintext',
-    output_format: Literal['sqlite', 'json'] = 'json'
+    output_directory: str, 
+    filename: str,
+    lyrics_format: LyricFormat = 'plaintext',
+    output_format: MassOutputFileFormat = 'json',
+    batch_size: int | None = None,
   ) -> None:
   """
     A pipeline to convert/parse several wiki pages (in the format of a MediaWiki XML dump)
@@ -27,56 +38,178 @@ async def pipeline(
   if lyrics_format != 'plaintext':
     raise NotImplementedError("Can only parse plaintext lyrics")
 
-  MAX_PAGES_TO_UNPACK = getenv("MW_XML_UNPACK_MAX_NUM_PAGES") or "10"
+  n = batch_size or __get_batch_size(output_format)
+  q = asyncio.Queue(n)
+  
+  _tb = __treat_batch(
+    lyrics_format=lyrics_format,
+    queue=q
+  )
 
-  async def treat_batch(batch: Tuple[ET.Element, ...]) -> None:
+  producer = asyncio.create_task(
+    read_dump(
+      xml_dump_file_path, 
+      max_pages_to_unpack_at_a_time=int(MAX_PAGES_TO_UNPACK), 
+      batch_callback=_tb
+    ))
+  _write_operation = _prepare_save_data_operation(lyrics_format, output_format)
+  consumer = asyncio.create_task(
+    __save_lyrics(
+      output_directory=output_directory,
+      filename=filename,
+      queue=q,
+      output_batch_size=n,
+      producer_future=producer,
+      _save_operation=_write_operation,
+    )
+  )
+  await producer
+  await q.join()
+  consumer.cancel()
+
+def check_if_file_exists(output_directory: str, output_format: MassOutputFileFormat, filename: str | None = None):
+  """
+    Checks if a given SQLITE/JSON file exists at the given directory. A default filename of 
+    `lyrics.{db|json}` is assumed if no filename is given.
+
+    JSON files have a sequential suffix attached, e.g. `lyrics-1.json`, `lyrics-2.json`, etc...
+    In this case, this function checks for the existence of `lyrics-1.json` only.
+  """
+  if filename is None:
+    filename = get_default_filename(output_format)
+  
+  if output_format == "json":
+    filename = __get_filename_with_sequential_suffix(filename, 1)
+
+  return exists(join(output_directory, filename))
+
+def get_default_filename(output_format: MassOutputFileFormat) -> str:
+  return f"lyrics{__get_extension(output_format)}"
+
+def __get_batch_size(output_format: MassOutputFileFormat) -> int:
+  if output_format == "json":
+    return JSON_DUMP_BATCH_SIZE
+  elif output_format == "sqlite":
+    return SQL_INSERT_BATCH_SIZE
+  raise ValueError
+
+def __get_extension(output_format: MassOutputFileFormat) -> str:
+  if output_format == "json":
+    return ".json"
+  elif output_format == "sqlite":
+    return ".db"
+  raise ValueError
+
+def __get_filename_with_sequential_suffix(filename: str, counter: int) -> str:
+  return re.sub(r"(\.[a-zA-Z0-9]+)$", fr"-{counter}\1", filename)
+
+def __treat_batch(
+    lyrics_format: LyricFormat, 
+    queue: asyncio.Queue
+  ) -> Callable[[Tuple[ET.Element, ...]], Awaitable]:
+  async def _fn(batch: Tuple[ET.Element, ...]) -> None:
     """
       Async handler to parallelize several separate coroutines (one per page) for each batch
     """
+    fn = __treat_page(lyrics_format)
     waitTasks = asyncio.gather(
-      *map(lambda page_contents: treat_page(page_contents), batch),
+      *[fn(page) for page in batch],
       return_exceptions=False
     )
     await waitTasks
-    batch_results = waitTasks.result()
+    for res in waitTasks.result():
+      if res is None:
+        continue
+      await queue.put(res)
+  return _fn
+
+def __treat_page(lyrics_format: LyricFormat) -> Callable[[ET.Element], Coroutine[Any, Any, Optional[TParsedResults]]]:
+  async def _fn(node: ET.Element) -> Optional[TParsedResults]:
+    """
+      Coroutine for each individual page
+    """
+    try:
+      title, page_id = get_page_properties(node)
+      page_contents = get_page_contents(node)
+      parsed_html, iw_links, external_links = await render_html(page_contents)
+      vdb_ids = get_vocadb_ids(iw_links, external_links)
+      
+      if lyrics_format == "plaintext":
+        table_ids, parsed_data, notes = parse_to_plaintext(parsed_html)
+        res = ParsedResultsPlaintext(
+          title=title,
+          vlw_page_id=page_id, 
+          vdb_ids=vdb_ids, 
+          table_ids=table_ids,
+          lyrics=parsed_data,
+          notes=notes,
+        )
+        return res
     
-    if output_format == 'sqlite':
-      save_lyrics_sqlite(output_file_path, batch_results)
-    else:
-      save_lyrics_json(output_file_path, batch_results)
+    except Exception:
+      console.print(
+        f"Failed to treat the page \"{title}\". Got the following error: ", 
+        traceback.format_exc(), 
+        sep="\n", 
+        style="red"
+      )
+      return None
+  return _fn
 
-  await read_dump(
-    xml_dump_file_path, 
-    max_pages_to_unpack_at_a_time=int(MAX_PAGES_TO_UNPACK), 
-    batch_callback=treat_batch
-  )
+def _prepare_save_data_operation(
+    lyrics_format: LyricFormat, 
+    output_format: MassOutputFileFormat, 
+  ) -> Callable[[str, str, int, List[Any]], None]:
+  if output_format == "json":
+    def inner(dir: str, filename: str, counter: int, data: List[Any]) -> None:
+      rfilename = __get_filename_with_sequential_suffix(filename, counter)
+      save_lyrics_json(join(dir, rfilename), data)
+    return inner
+  elif output_format == "sqlite":
+    if lyrics_format == "plaintext":
+      def inner(dir: str, filename: str, counter: int, data: List[Any]) -> None:
+        save_lyrics_sqlite_plaintext(join(dir, filename), data)
+      return inner
+  raise NotImplementedError
 
-async def treat_page(node: ET.Element) -> Optional[ParsedResultsPlaintext]:
-  """
-    Coroutine for each individual page
-  """
-  try:
-    title, page_id = get_page_properties(node)
-    page_contents = get_page_contents(node)
-    parsed_html, iw_links, external_links = await render_html(page_contents)
-    vdb_ids = get_vocadb_ids(iw_links, external_links)
-    table_ids, parsed_data, notes = parse_to_plaintext(parsed_html)
+async def __save_lyrics(
+    output_directory: str,
+    filename: str,
+    queue: asyncio.Queue,
+    output_batch_size: int,
+    producer_future: asyncio.Future,
+    _save_operation: Callable[[str, str, int, List[Any]], None],
+  ):
+  c = 1
+  attempts, MAX_WRITE_ATTEMPTS = 0, 3
+  buffer = []
+  while True:
+    popped = await queue.get()
+    buffer.append(popped)
+    queue.task_done()
+    if len(buffer) >= output_batch_size or (producer_future.done() and queue.empty()):
+      to_write = buffer[:output_batch_size]
+      
+      try:
+        _save_operation(
+          output_directory, 
+          filename, 
+          c,
+          to_write
+        )
+        attempts = 0
+        c += 1
+      
+      except Exception:
+        attempts += 1
+        if attempts < MAX_WRITE_ATTEMPTS:
+          continue
 
-    res = ParsedResultsPlaintext(
-      title=title,
-      vlw_page_id=page_id, 
-      vdb_ids=vdb_ids, 
-      table_ids=table_ids,
-      lyrics=parsed_data,
-      notes=notes,
-    )
-    return res
-  
-  except Exception:
-    console.print(
-      f"Failed to treat the page \"{title}\". Got the following error: ", 
-      traceback.format_exc(), 
-      sep="\n", 
-      style="red"
-    )
-    return None
+        console.print("Exceeded maximum number of write attempts. Stopping operation...", style="magenta")
+        producer_future.cancel()
+        while not queue.empty():
+          a = await queue.get()
+          queue.task_done()
+        break
+      
+      buffer = buffer[output_batch_size:]

@@ -1,18 +1,17 @@
-from .. import console, traceback
-from ..classes.collection import ParsedResultsPlaintext
+from .. import console, traceback, JSON_INDENTATION
+from ..classes.types import TParsedResults
 
 from pydantic import TypeAdapter
 
 from typing import List, Optional
 
-def save_lyrics_json(json_filepath: str, batch_results: List[Optional[ParsedResultsPlaintext]]):
+def save_lyrics_json(json_filepath: str, batch_results: List[TParsedResults]):
   """
     Save the parsed lyrics to a JSON file
   """
   try:
     console.print(f"Creating a JSON dump at {json_filepath}", style="magenta")
-    filtered_results = [res for res in batch_results if res is not None]
-    json_string = TypeAdapter(List[ParsedResultsPlaintext]).dump_json(filtered_results, indent=2)
+    json_string = TypeAdapter(List[TParsedResults]).dump_json(batch_results, indent=JSON_INDENTATION)
     with open(json_filepath, "w", encoding="UTF-8") as file:
       file.write(json_string.decode('utf-8'))
   

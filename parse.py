@@ -1,18 +1,21 @@
 import argparse
 
-from vlw_lyrics_parser import console
 from vlw_lyrics_parser import (
+  console,
   parse_lyrics_from_test_string,
   parse_lyrics_from_wiki_api,
   parse_lyrics_from_xml_dump
 )
-from vlw_lyrics_parser.io.save_output_sqlite_plaintext import (
+from vlw_lyrics_parser.pipeline.xml_to_html_to_lyrics import (
+  get_default_filename,
+  check_if_file_exists
+)
+from vlw_lyrics_parser.io.save_output_sqlite import (
   initialize_db
 )
 
-import re
 import asyncio
-import os
+import re
 
 VLW_API_ENTRYPOINT = "https://vocaloidlyrics.miraheze.org/w/api.php"
 
@@ -35,7 +38,7 @@ def initialize_argparser() -> argparse.ArgumentParser:
   )
 
   shared_lyrics_format_argument = (
-    ( "-f", "--lyrics-format" ), 
+    ( "-M", "--lyrics-format" ), 
     { "type": str, "choices": ["plaintext"], "help": "Lyrics format" }
   )
   shared_output_format_argument_short = (
@@ -50,8 +53,8 @@ def initialize_argparser() -> argparse.ArgumentParser:
   test_string_parser = subparsers.add_parser(
     "str",
     help="Parse a portion of wikitext",
-    usage="main.py str [-h] [-o OUTPUT] wikitext",
-    description="Takes in a portion of wikitext as input and returns a set of parsed lyrics as output.\n\nmain.py str wikitext\n\tPrints output to console\n\nmain.py str -o /path/to/output/file wikitext\n\tPrints output to a JSON file",
+    usage="parse.py str [-h] [-o OUTPUT] wikitext",
+    description="Takes in a portion of wikitext as input and returns a set of parsed lyrics as output.\n\nparse.py str wikitext\n\tPrints output to console\n\nparse.py str -o /path/to/output/file.json wikitext\n\tPrints output to a JSON file",
     formatter_class=argparse.RawTextHelpFormatter
   )
   test_string_parser.add_argument(
@@ -75,8 +78,8 @@ def initialize_argparser() -> argparse.ArgumentParser:
   api_parser = subparsers.add_parser(
     "api",
     help="Fetch lyrics from the Vocaloid Lyrics Wiki API",
-    usage="main.py api [-h] [-t TITLE] [-pid PAGEID [-rid REVID]] [-o OUTPUT] [-ua USERAGENT]",
-    description="Queries the API of the Vocaloid Lyrics Wiki and returns a set of parsed lyrics as output.\n\nmain.py api -t TITLE -o /path/to/output/file -ua \"Custom user agent - user@mail.com\"\n\tParses lyrics for page with the specified title, prints output to a JSON file\n\nmain.py api -t TITLE -ua \"Custom user agent - user@mail.com\"\n\tParses lyrics for page with the specified title, prints output to console\n\nmain.py api -pid 1234 -ua \"Custom user agent - user@mail.com\"\n\tParses lyrics for page with page ID 1234, prints output to console",
+    usage="parse.py api [-h] [-t TITLE] [-pid PAGEID [-rid REVID]] [-o OUTPUT] [-ua USERAGENT]",
+    description="Queries the API of the Vocaloid Lyrics Wiki and returns a set of parsed lyrics as output.\n\nparse.py api -t TITLE -o /path/to/output/file.json -ua \"Custom user agent - user@mail.com\"\n\tParses lyrics for page with the specified title, prints output to a JSON file\n\nparse.py api -t TITLE -ua \"Custom user agent - user@mail.com\"\n\tParses lyrics for page with the specified title, prints output to console\n\nparse.py api -pid 1234 -ua \"Custom user agent - user@mail.com\"\n\tParses lyrics for page with page ID 1234, prints output to console",
     formatter_class=argparse.RawTextHelpFormatter
   )
   api_parser.add_argument(
@@ -120,19 +123,26 @@ def initialize_argparser() -> argparse.ArgumentParser:
   xml_parser = subparsers.add_parser(
     "xml",
     help="Iterates through a MediaWiki XML dump",
-    usage="main.py xml [-h] xml-filepath output-filepath",
-    description="Iterates through a MediaWiki XML dump and returns a set of parsed lyrics as output.\n\nmain.py xml /path/to/xml /path/to/output",
+    usage="parse.py xml [-h] -i FILE_PATH -dir FOLDER_PATH [-f FILENAME] [--output-format {json|sqlite}]",
+    description="Iterates through a MediaWiki XML dump and returns a set of parsed lyrics as output.\n\nparse.py xml -i /path/to/dump.xml -dir /path/to/output/folder\n\tSaves the results onto a file named lyrics.db in the output directory\n\nparse.py xml -i /path/to/dump.xml -dir /path/to/output/folder --output-format json\n\tSaves the results onto a file named lyrics-1.json (and lyrics-2.json, and so on) in the output directory\n\nparse.py xml -i /path/to/dump.xml -dir /path/to/output/folder -f custom-name.sqlite\n\tSaves the results to custom-name.sqlite in the output directory\n\nparse.py xml -i /path/to/dump.xml -dir /path/to/output/folder -f custom-name.json\n\tSaves the results to custom-name-1.json (and custom-name-2.json, and so on...) in the output directory\n\nparse.py xml -i /path/to/dump.xml -dir /path/to/output/folder --output-format json -n 100\n\tSaves the results to a JSON file (100 items per JSON file) in the output directory",
     formatter_class=argparse.RawTextHelpFormatter
   )
   xml_parser.add_argument(
-    "xml-filepath",
+    "-i", "--input",
     type=str,
     help="Path to the MediaWiki XML dump file",
+    required=True,
   )
   xml_parser.add_argument(
-    "output-filepath",
+    "-dir", "--directory",
     type=str,
-    help="Path to the output JSON/SQLITE file",
+    help="Directory path to where the output JSON/SQLITE files will be saved in",
+    required=True,
+  )
+  xml_parser.add_argument(
+    "-f", "--filename",
+    type=str,
+    help="The name of the JSON/SQLITE file(s). Default: lyrics.{json|db}",
   )
   xml_parser.add_argument(
     *shared_lyrics_format_argument[0],
@@ -142,7 +152,12 @@ def initialize_argparser() -> argparse.ArgumentParser:
     "--output-format",
     type=str, 
     choices=["json", "sqlite"], 
-    help="Show parsed lyrics as JSON file or SQLITE file"
+    help="Show parsed lyrics as JSON file or SQLITE database file",
+  )
+  xml_parser.add_argument(
+    "-n", "--batch-size",
+    type=int,  
+    help="Number of items to add to the JSON/SQLITE database file per insert operation",
   )
 
   return parser
@@ -165,6 +180,7 @@ def main() -> None:
       json_filepath=args.output,
       output_format=args.output_format,
     )
+  
   elif command == "api":
     coro = parse_lyrics_from_wiki_api(
       title=args.title,
@@ -176,30 +192,48 @@ def main() -> None:
       api_entrypoint=args.api_entrypoint or VLW_API_ENTRYPOINT,
       user_agent=args.user_agent
     )
+  
   elif command == "xml":
-    is_json = re.search(r"\.json$", str(args.__dict__['output-filepath']), re.I) is not None 
-    if args.output_format is None:
-      args.output_format = "json" if is_json else "sqlite"
-    
     clear_data = True
-    if os.path.exists(args.__dict__['output-filepath']):
-      clear_data = confirm_action(f"An existing file is detected on {args.__dict__['output-filepath']}. Are you sure that you'd like to clear the data in this file?")
+
+    if args.output_format is None:
+      if args.filename is not None:
+        if re.search(r"\.json$", args.filename, re.I) is not None:
+          args.output_format = "json"
+      args.output_format = args.output_format or "sqlite"
+    args.filename = args.filename or get_default_filename(args.output_format)
     
-    if args.output_format == "json" and not clear_data:
-      console.print("Terminating early...")
-      return
+    if args.batch_size is not None and args.batch_size < 0:
+      args.batch_size = None
+
+    has_existing_files = check_if_file_exists(
+      output_directory=args.directory,
+      output_format=args.output_format,
+      filename=args.filename,
+    )
+    if has_existing_files:
+      clear_data = confirm_action(f"Existing files in {args.directory} will be overwritten. Are you sure that you'd like to clear the data in these file(s)?")
+        
     if args.output_format == "sqlite":
       if clear_data:
         console.print("Clearing existing data...")
-        initialize_db(args.__dict__['output-filepath'])
+        initialize_db(
+          output_directory=args.directory, 
+          filename=args.filename
+        )
       else:
         console.print("Existing data will be kept")
+    elif args.output_format == "json" and not clear_data:
+      console.print("Terminating early...")
+      return
     
     coro = parse_lyrics_from_xml_dump(
-      xml_dump_file_path=args.__dict__['xml-filepath'],
-      output_file_path=args.__dict__['output-filepath'],
+      xml_dump_file_path=args.input,
+      output_directory=args.directory,
+      filename=args.filename,
       lyrics_format=args.lyrics_format,
-      output_format=args.output_format
+      output_format=args.output_format,
+      batch_size=args.batch_size,
     )
 
   if coro is not None:

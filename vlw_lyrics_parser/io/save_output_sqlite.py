@@ -1,26 +1,26 @@
 import sqlite3
 
-from os.path import abspath
+from os.path import abspath, join
 
 from .. import console, traceback
 from ..classes.collection import ParsedResultsPlaintext
 
-from typing import List, Optional, Tuple, Literal
+from typing import List, Tuple, Literal
 
-def initialize_db(db_filepath: str):
+def initialize_db(output_directory: str, filename: str):
   """
-    Initialize a SQLITE database for storing plaintext lyrics.
+    Initialize a SQLITE database for storing lyrics.
 
     If a database exists at the given path, then data in the existing tables will 
     be cleared and the schema rebuilt.
   """
-  db_filepath = abspath(db_filepath)
-  console.print(f"Creating an SQLITE Database at {db_filepath}", style="magenta")
-  db_conn = sqlite3.connect(db_filepath)
+  filename = abspath(join(output_directory, filename))
+  console.print(f"Creating an SQLITE Database at {filename}", style="magenta")
+  db_conn = sqlite3.connect(filename)
   db_cursor = db_conn.cursor()
   db_cursor.execute("DROP TABLE IF EXISTS VLW_PAGES;")
   db_cursor.execute("DROP TABLE IF EXISTS VDB_LINKS;")
-  db_cursor.execute("DROP TABLE IF EXISTS LYRICS;")
+  db_cursor.execute("DROP TABLE IF EXISTS LYRICS_PLAINTEXT;")
   db_cursor.execute("DROP TABLE IF EXISTS TRANSLATORS;")
   db_cursor.execute("CREATE TABLE VLW_PAGES(VLW_ID INTEGER NOT NULL, VLW_TITLE VARCHAR);")
   db_cursor.execute("""
@@ -30,7 +30,7 @@ def initialize_db(db_filepath: str):
       VDB_ID INTEGER NOT NULL
     );""")
   db_cursor.execute("""
-    CREATE TABLE LYRICS(
+    CREATE TABLE LYRICS_PLAINTEXT(
       VLW_ID INTEGER NOT NULL 
         REFERENCES VLW_PAGES(VLW_ID) ON UPDATE CASCADE ON DELETE CASCADE, 
       TABLE_ID VARCHAR, 
@@ -51,20 +51,20 @@ def initialize_db(db_filepath: str):
       TRANSLATOR VARCHAR
     );""")
   # No index, sorry
-
-def save_lyrics_sqlite(db_filepath: str, batch_results: List[Optional[ParsedResultsPlaintext]]):
-  """
-    Save the parsed lyrics to a SQLITE database
-  """
   
+  db_conn.commit()
+  db_conn.close()
+
+def save_lyrics_sqlite_plaintext(db_filepath: str, batch_results: List[ParsedResultsPlaintext]):
+  """
+    Save the parsed plaintext lyrics to a SQLITE database
+  """
   # Aggregate
   dto_pages: List[Tuple[int, str]] = []
   dto_vdb_links: List[Tuple[int, int]] = []
-  dto_lyrics: List[Tuple[int, str, str, str, str | None, str | None, Literal[0] | Literal[1] | None, str | None]] = []
+  dto_lyrics: List[Tuple[int, str, str, str, str | None, str | None, Literal[0, 1] | None, str | None]] = []
   dto_translators: List[Tuple[int, str, str, str, str]] = []
   for results in batch_results:
-    if results is None:
-      continue
     page_id = results.vlw_page_id
     dto_pages.append((page_id, results.title))
     dto_vdb_links.extend([(page_id, id) for id in results.vdb_ids])
@@ -114,7 +114,7 @@ def save_lyrics_sqlite(db_filepath: str, batch_results: List[Optional[ParsedResu
       dto_vdb_links
     )
     db_cursor.executemany(
-      f"INSERT INTO LYRICS(VLW_ID, TABLE_ID, COL_ID, HEADER, LYRICS, TRANSLATION_CREDITS, IS_OFFICIAL_TRANSLATION, NOTES) VALUES (?, ?, ?, ?, ?, ?, ?, ?);", 
+      f"INSERT INTO LYRICS_PLAINTEXT(VLW_ID, TABLE_ID, COL_ID, HEADER, LYRICS, TRANSLATION_CREDITS, IS_OFFICIAL_TRANSLATION, NOTES) VALUES (?, ?, ?, ?, ?, ?, ?, ?);", 
       dto_lyrics
     )
     db_cursor.executemany(
@@ -131,3 +131,5 @@ def save_lyrics_sqlite(db_filepath: str, batch_results: List[Optional[ParsedResu
     )
     db_cursor.execute("ROLLBACK;")
     raise
+  finally:
+    db_conn.close()

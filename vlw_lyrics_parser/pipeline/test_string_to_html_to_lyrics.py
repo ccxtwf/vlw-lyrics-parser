@@ -1,18 +1,17 @@
 from .. import console, traceback, JSON_INDENTATION
 
-from vlw_lyrics_parser.classes.collection import ParsedResultsPlaintext
+from ..classes.collection import ParsedResultsPlaintext
+from ..classes.types import LyricFormat, OutputFileFormat
 
-from vlw_lyrics_parser.wikitext2html.mediawiki_action_api_parser import render_html
-from vlw_lyrics_parser.html2lyrics.parse_to_plaintext import parse_to_plaintext
-from vlw_lyrics_parser.html2lyrics.utils import get_vocadb_ids
-
-from typing import Literal
+from ..wikitext2html.mediawiki_action_api_parser import render_html
+from ..html2lyrics.parse_to_plaintext import parse_to_plaintext
+from ..html2lyrics.utils import get_vocadb_ids
 
 async def pipeline(
     wikitext: str, 
-    lyrics_format: Literal['plaintext'] = 'plaintext',
+    lyrics_format: LyricFormat = 'plaintext',
     json_filepath: str | None = None, 
-    output_format: Literal['json', 'console'] = 'console',
+    output_format: OutputFileFormat = 'console',
   ) -> None:
   """
     A pipeline to convert a given portion of wikitext into a structured 
@@ -30,16 +29,18 @@ async def pipeline(
 
   parsed_html, iw_links, external_links = await render_html(wikitext)
   vdb_ids = get_vocadb_ids(iw_links, external_links)
-  table_ids, parsed_data, notes = parse_to_plaintext(parsed_html)
 
-  res = ParsedResultsPlaintext(
-    title="TEST STRING",
-    vlw_page_id=0, 
-    vdb_ids=vdb_ids, 
-    table_ids=table_ids,
-    lyrics=parsed_data,
-    notes=notes,
-  )
+  if lyrics_format == "plaintext":
+    table_ids, parsed_data, notes = parse_to_plaintext(parsed_html)
+
+    res = ParsedResultsPlaintext(
+      title="TEST STRING",
+      vlw_page_id=0, 
+      vdb_ids=vdb_ids, 
+      table_ids=table_ids,
+      lyrics=parsed_data,
+      notes=notes,
+    )
 
   if output_format == 'json':
     console.print(f"Creating a JSON dump at {json_filepath}", style="magenta")
@@ -59,4 +60,4 @@ async def pipeline(
       file.close()
   
   else:
-    print(res.model_dump_json(indent=JSON_INDENTATION))
+    console.print(res.model_dump_json(indent=JSON_INDENTATION))

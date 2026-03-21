@@ -43,7 +43,7 @@ MW_XML_UNPACK_MAX_NUM_PAGES=20
 
 You can either use this package as part of another Python script/project, or use the provided command line interface (CLI). To start interacting with the CLI, run the following command:
 ```sh
-python main.py -h
+python parse.py -h
 ```
 
 ### Parsing lyrics from a wiki page
@@ -73,10 +73,10 @@ parse_lyrics_from_wiki_api(
 Alternatively, you can use the CLI:
 ```sh
 # Prints to console
-python main.py api -t "ハローワールド (Hello World)" -ua "<Custom User Agent>"
+python parse.py api -t "ハローワールド (Hello World)" -ua "<Custom User Agent>"
 
 # Save as JSON 
-python main.py api -t "ハローワールド (Hello World)" -o "/path/to/file.json" -ua "<Custom User Agent>"
+python parse.py api -t "ハローワールド (Hello World)" -o "/path/to/file.json" -ua "<Custom User Agent>"
 ```
 
 ### Parsing a test string into lyrics
@@ -122,7 +122,7 @@ asyncio.run(
 
 Alternatively, you can use the CLI:
 ```sh
-python main.py str "<WIKITEXT>"
+python parse.py str "<WIKITEXT>"
 ```
 
 ### Parsing a MediaWiki export dump into plaintext lyrics
@@ -135,14 +135,16 @@ from vlw_lyrics_parser import initialize_db, parse_lyrics_from_xml_dump
 import asyncio
 
 DUMP_FILE_NAME = "/path/to/xml/dump"
-OUTPUT_SQL_FILE = "/path/to/output/sql/file.db"
+OUTPUT_DIR = "/path/to/output/folder/dir"
+SQLITE_DB_FILENAME = "lyrics.db"
 
 # Recreates the database schema at the given filepath
-initialize_db(OUTPUT_SQL_FILE)
+initialize_db(OUTPUT_DIR, SQLITE_DB_FILENAME)
 asyncio.run(
   parse_lyrics_from_xml_dump(
     xml_dump_file_path=DUMP_FILE_NAME, 
-    output_file_path=OUTPUT_SQL_FILE, 
+    output_directory=OUTPUT_DIR,
+    filename=SQLITE_DB_FILENAME,
     output_format='sqlite'
   )
 )
@@ -156,12 +158,14 @@ from vlw_lyrics_parser import initialize_db, parse_lyrics_from_xml_dump
 import asyncio
 
 DUMP_FILE_NAME = "/path/to/xml/dump"
-OUTPUT_JSON_FILE = "/path/to/output/json/file.json"
+OUTPUT_DIR = "/path/to/output/folder/dir"
+JSON_FILE_NAME = "lyrics.json"
 
 asyncio.run(
   parse_lyrics_from_xml_dump(
     xml_dump_file_path=DUMP_FILE_NAME, 
-    output_file_path=OUTPUT_JSON_FILE, 
+    output_directory=OUTPUT_DIR,
+    filename=JSON_FILE_NAME, 
     output_format='json'
   )
 )
@@ -169,5 +173,13 @@ asyncio.run(
 
 The equivalent CLI command is:
 ```sh
-python main.py xml "/path/to/xml" "/path/to/output"
+# Saves the results onto lyrics.db in the given directory
+python parse.py xml -i /path/to/xml -dir /path/to/output
+
+# Saves the results onto lyrics-1.json, lyrics-2.json, and so on in the given directory
+python parse.py xml -i /path/to/xml -dir /path/to/output --output-format json
+
+# Saves the results onto lyrics-1.json, lyrics-2.json, and so on in the given directory
+# Saves 100 items per JSON file
+python parse.py xml -i /path/to/xml -dir /path/to/output --output-format json -n 100
 ```
