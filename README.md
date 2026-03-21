@@ -36,6 +36,10 @@ MEDIAWIKI_ACTION_API_ENTRYPOINT="http://localhost:8080/api.php"
 MW_XML_DUMP_NAMESPACE="{http://www.mediawiki.org/xml/export-0.11/}"
 #   number of pages to unpack from an XML dump at a time
 MW_XML_UNPACK_MAX_NUM_PAGES=20
+#   number of items to insert into the database per batch operation
+SQL_INSERT_BATCH_SIZE=100
+#   number of items to load per JSON dump
+JSON_DUMP_BATCH_SIZE=100
 ```
 3) Install the required Python packages listed on requirements.txt
 
