@@ -1,9 +1,8 @@
-import xml.etree.ElementTree as ET
+from lxml import etree
 import asyncio
 
-from .. import console, traceback, getenv
+from .. import console, traceback
 from ..classes.collection import ParsedResults
-from ..classes.exceptions import FileWriteExceededMaxAttempts
 from ..classes.types import LyricFormat, MassOutputFileFormat
 
 from ..io.read_xml_dump import read_dump, get_page_contents, get_page_properties
@@ -12,15 +11,16 @@ from ..io.save_output_json import save_lyrics_json
 from ..transformers.wikitext2html.mediawiki_action_api_parser import render_html
 from ..transformers.html2lyrics.utils import get_vocadb_ids
 from ..transformers.html2lyrics.parse_to_plaintext import parse_to_plaintext
+from ..config import (
+  MAX_PAGES_TO_UNPACK,
+  JSON_DUMP_BATCH_SIZE,
+  SQL_INSERT_BATCH_SIZE,
+)
 
 from typing import Optional, List, Tuple, Any
 from collections.abc import Callable, Coroutine, Awaitable
 from os.path import join, exists
 import re
-
-MAX_PAGES_TO_UNPACK = int(getenv("MW_XML_UNPACK_MAX_NUM_PAGES", "10"))
-JSON_DUMP_BATCH_SIZE = int(getenv("JSON_DUMP_BATCH_SIZE", "50"))
-SQL_INSERT_BATCH_SIZE = int(getenv("SQL_INSERT_BATCH_SIZE", "50"))
 
 async def pipeline(
     xml_dump_file_path: str, 
@@ -106,14 +106,14 @@ def __get_filename_with_sequential_suffix(filename: str, counter: int) -> str:
 def __treat_batch(
     lyrics_format: LyricFormat, 
     queue: asyncio.Queue
-  ) -> Callable[[Tuple[ET.Element, ...]], Awaitable]:
-  async def _fn(batch: Tuple[ET.Element, ...]) -> None:
+  ) -> Callable[[Tuple[Tuple[str, etree.Element], ...]], Awaitable]:
+  async def _fn(batch: Tuple[Tuple[str, etree.Element], ...]) -> None:
     """
       Async handler to parallelize several separate coroutines (one per page) for each batch
     """
     fn = __treat_page(lyrics_format)
     waitTasks = asyncio.gather(
-      *[fn(page) for page in batch],
+      *[fn(page) for _, page in batch],
       return_exceptions=False
     )
     await waitTasks
@@ -123,8 +123,8 @@ def __treat_batch(
       await queue.put(res)
   return _fn
 
-def __treat_page(lyrics_format: LyricFormat) -> Callable[[ET.Element], Coroutine[Any, Any, Optional[ParsedResults[Any]]]]:
-  async def _fn(node: ET.Element) -> Optional[ParsedResults[Any]]:
+def __treat_page(lyrics_format: LyricFormat) -> Callable[[etree.Element], Coroutine[Any, Any, Optional[ParsedResults[Any]]]]:
+  async def _fn(node: etree.Element) -> Optional[ParsedResults[Any]]:
     """
       Coroutine for each individual page
     """

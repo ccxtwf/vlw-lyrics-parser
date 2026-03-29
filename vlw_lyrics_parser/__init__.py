@@ -6,7 +6,6 @@ console = Console()
 
 from dotenv import load_dotenv
 load_dotenv()
-from os import getenv
 
 # printing constants
 JSON_INDENTATION: Final = 2

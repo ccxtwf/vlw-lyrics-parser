@@ -1,11 +1,12 @@
 import aiohttp
 
-from ... import console, traceback, getenv
+from ... import console, traceback
 from ...classes.exceptions import ReadMediawikiException
+from ...config import (
+  WIKITEXT2HTML_PARSER_API_ENTRYPOINT
+)
 
 from typing import Tuple, List, Dict, Any
-
-MEDIAWIKI_ACTION_API_ENTRYPOINT = getenv("MEDIAWIKI_ACTION_API_ENTRYPOINT", "")
 
 def prepare_api_headers(user_agent: str | None = None) -> Dict[str, Any]:
   headers = {
@@ -89,7 +90,7 @@ async def render_html(page_contents: str) -> Tuple[str, List[str], List[str]]:
       data.add_field(k, v)
     async with aiohttp.ClientSession() as session:
       async with session.post(
-        MEDIAWIKI_ACTION_API_ENTRYPOINT, 
+        WIKITEXT2HTML_PARSER_API_ENTRYPOINT, 
         headers=headers, 
         data=data
       ) as response:

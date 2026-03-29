@@ -1,4 +1,4 @@
-from .. import console, traceback, getenv, JSON_INDENTATION
+from .. import console, traceback, JSON_INDENTATION
 
 from ..classes.collection import ParsedResults
 from ..classes.types import LyricFormat, OutputFileFormat
@@ -10,6 +10,10 @@ from ..transformers.wikitext2html.mediawiki_action_api_parser import (
 )
 from ..transformers.html2lyrics.parse_to_plaintext import parse_to_plaintext
 from ..transformers.html2lyrics.utils import get_vocadb_ids
+from ..config import (
+  VLW_LIVE_API_ENTRYPOINT,
+  CUSTOM_USER_AGENT,
+)
 
 import requests
 
@@ -19,9 +23,9 @@ def pipeline(
     pageid: int | None = None,
     json_filepath: str | None = None, 
     lyrics_format: LyricFormat = 'plaintext',
-    api_entrypoint: str | None = None, 
+    api_entrypoint: str = VLW_LIVE_API_ENTRYPOINT, 
     output_format: OutputFileFormat = 'console',
-    user_agent: str | None = None,
+    user_agent: str | None = CUSTOM_USER_AGENT,
   ) -> None:
   """
     Makes a request to the given MediaWiki API entrypoint (or the entrypoint set on .env if 
@@ -34,9 +38,6 @@ def pipeline(
   if output_format == 'json' and json_filepath is None:
     console.print(f"A JSON filepath has to be specified! Switching to output_format = 'console'", style="red")
     output_format = 'console'
-
-  if api_entrypoint is None:
-    api_entrypoint = getenv("MEDIAWIKI_ACTION_API_ENTRYPOINT", "")
 
   api_headers = prepare_api_headers(user_agent=user_agent)
   api_payload = prepare_api_payload(title=title, pageid=pageid, revid=revid)

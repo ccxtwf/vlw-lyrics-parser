@@ -26,22 +26,15 @@ Failure to follow these rules may result in rate-limiting or blocking by the tec
 1) Clone this repository.
 2) Create a file `.env` that contains the following variables:
 ```sh
+# When making HTTP requests to the live wiki, this user agent will be used
+CUSTOM_USER_AGENT="<Custom UA>"
+
 # A working MediaWiki app is needed to parse wikitext -> HTML
 # It is recommended to use a local MediaWiki mirror than to 
 # make requests to the real Vocaloid Lyrics Wiki
-MEDIAWIKI_ACTION_API_ENTRYPOINT="http://localhost:8080/api.php"
-
-# For reading the MediaWiki XML dumps: 
-#   XML namespace
-MW_XML_DUMP_NAMESPACE="{http://www.mediawiki.org/xml/export-0.11/}"
-#   number of pages to unpack from an XML dump at a time
-MW_XML_UNPACK_MAX_NUM_PAGES=20
-#   number of items to insert into the database per batch operation
-SQL_INSERT_BATCH_SIZE=100
-#   number of items to load per JSON dump
-JSON_DUMP_BATCH_SIZE=100
+WIKITEXT2HTML_PARSER_API_ENTRYPOINT="http://localhost:8080/api.php"
 ```
-3) Install the required Python packages listed on requirements.txt
+3) Install the required Python packages using `python -m pip install`
 
 ## Usage
 
@@ -58,17 +51,11 @@ The following snippet shows how you may use this package to parse lyrics from th
 from vlw_lyrics_parser import parse_lyrics_from_wiki_api
 
 # Print to console
-parse_lyrics_from_wiki_api(
-  title="ハローワールド (Hello World)",
-  api_entrypoint="https://vocaloidlyrics.miraheze.org/w/api.php",
-  user_agent="<Custom User Agent>"
-)
+parse_lyrics_from_wiki_api(title="ハローワールド (Hello World)")
 
 # Save as JSON file
 parse_lyrics_from_wiki_api(
   title="ハローワールド (Hello World)",
-  api_entrypoint="https://vocaloidlyrics.miraheze.org/w/api.php",
-  user_agent="<Custom User Agent>",
   json_filepath='vlw_test.json',
   output_format='json'
 )
@@ -77,10 +64,10 @@ parse_lyrics_from_wiki_api(
 Alternatively, you can use the CLI:
 ```sh
 # Prints to console
-python parse.py api -t "ハローワールド (Hello World)" -ua "<Custom User Agent>"
+python parse.py api -t "ハローワールド (Hello World)"
 
 # Save as JSON 
-python parse.py api -t "ハローワールド (Hello World)" -o "/path/to/file.json" -ua "<Custom User Agent>"
+python parse.py api -t "ハローワールド (Hello World)" -o "/path/to/file.json"
 ```
 
 ### Parsing a test string into lyrics
