@@ -9,9 +9,9 @@ from ..classes.types import LyricFormat, MassOutputFileFormat
 from ..io.read_xml_dump import read_dump, get_page_contents, get_page_properties
 from ..io.save_output_sqlite import save_lyrics_sqlite_plaintext
 from ..io.save_output_json import save_lyrics_json
-from ..wikitext2html.mediawiki_action_api_parser import render_html
-from ..html2lyrics.utils import get_vocadb_ids
-from ..html2lyrics.parse_to_plaintext import parse_to_plaintext
+from ..transformers.wikitext2html.mediawiki_action_api_parser import render_html
+from ..transformers.html2lyrics.utils import get_vocadb_ids
+from ..transformers.html2lyrics.parse_to_plaintext import parse_to_plaintext
 
 from typing import Optional, List, Tuple, Any
 from collections.abc import Callable, Coroutine, Awaitable

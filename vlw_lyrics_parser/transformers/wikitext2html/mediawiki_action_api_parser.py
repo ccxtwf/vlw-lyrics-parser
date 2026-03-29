@@ -1,7 +1,7 @@
 import aiohttp
 
-from .. import console, traceback, getenv
-from ..classes.exceptions import ReadMediawikiException
+from ... import console, traceback, getenv
+from ...classes.exceptions import ReadMediawikiException
 
 from typing import Tuple, List, Dict, Any
 

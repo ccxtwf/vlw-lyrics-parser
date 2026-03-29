@@ -1,4 +1,4 @@
-from .. import console, traceback
+from ... import console, traceback
 
 from typing import List
 

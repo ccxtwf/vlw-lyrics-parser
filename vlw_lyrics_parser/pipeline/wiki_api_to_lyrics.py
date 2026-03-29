@@ -3,13 +3,13 @@ from .. import console, traceback, getenv, JSON_INDENTATION
 from ..classes.collection import ParsedResults
 from ..classes.types import LyricFormat, OutputFileFormat
 
-from ..wikitext2html.mediawiki_action_api_parser import (
+from ..transformers.wikitext2html.mediawiki_action_api_parser import (
   prepare_api_headers, 
   prepare_api_payload, 
   handle_api_response
 )
-from ..html2lyrics.parse_to_plaintext import parse_to_plaintext
-from ..html2lyrics.utils import get_vocadb_ids
+from ..transformers.html2lyrics.parse_to_plaintext import parse_to_plaintext
+from ..transformers.html2lyrics.utils import get_vocadb_ids
 
 import requests
 

@@ -1,7 +1,7 @@
 from pyquery import PyQuery as pq
 
-from .. import console, traceback
-from ..classes.collection import ParsedTranslators, ReferenceItem
+from ... import console, traceback
+from ...classes.collection import ParsedTranslators, ReferenceItem
 
 import json
 

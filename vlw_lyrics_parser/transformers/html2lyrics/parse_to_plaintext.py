@@ -1,7 +1,7 @@
 from pyquery import PyQuery as pq
 
-from .. import console, traceback
-from ..classes.collection import ParsedLyrics, ReferenceItem
+from ... import console, traceback
+from ...classes.collection import ParsedLyrics, ReferenceItem
 from .parse_properties import parse_ids_and_headers, parse_translators, parse_reference_notes
 
 import re
