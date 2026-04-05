@@ -195,7 +195,7 @@ def main() -> None:
       args.wikitext, 
       transformer=TransformerUtils.test_string_to_lyrics(
         lyrics_format=args.lyrics_format,
-        use_experimental_wtp=False,
+        use_experimental_wtp=args.wtp or False,
       ),
       json_filepath=args.output,
       output_format=args.output_format,
@@ -253,7 +253,7 @@ def main() -> None:
       filename=args.filename,
       transformer=TransformerUtils.wikipage_to_lyrics(
         lyrics_format=args.lyrics_format,
-        use_experimental_wtp=False,
+        use_experimental_wtp=args.wtp or False,
       ),
       lyrics_format=args.lyrics_format,
       output_format=args.output_format,
