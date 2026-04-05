@@ -23,10 +23,17 @@ def initialize_db(output_directory: str, filename: str):
   db_conn = sqlite3.connect(filename)
   db_cursor = db_conn.cursor()
   db_cursor.execute("DROP TABLE IF EXISTS VLW_PAGES;")
+  db_cursor.execute("DROP TABLE IF EXISTS VLW_CATEGORIES;")
   db_cursor.execute("DROP TABLE IF EXISTS VDB_LINKS;")
   db_cursor.execute("DROP TABLE IF EXISTS LYRICS_PLAINTEXT;")
   db_cursor.execute("DROP TABLE IF EXISTS TRANSLATORS;")
   db_cursor.execute("CREATE TABLE VLW_PAGES(VLW_ID INTEGER NOT NULL, VLW_TITLE VARCHAR);")
+  db_cursor.execute("""
+    CREATE TABLE VLW_CATEGORIES(
+      VLW_ID INTEGER NOT NULL 
+        REFERENCES VLW_PAGES(VLW_ID) ON UPDATE CASCADE ON DELETE CASCADE, 
+      CATEGORY VARCHAR NOT NULL
+    );""")
   db_cursor.execute("""
     CREATE TABLE VDB_LINKS(
       VLW_ID INTEGER NOT NULL 
@@ -69,12 +76,15 @@ def save_lyrics_sqlite_plaintext(db_filepath: str, batch_results: List[ParsedRes
   """
   # Aggregate
   dto_pages: List[Tuple[int, str]] = []
+  dto_vlw_categories: List[Tuple[int, str]] = []
   dto_vdb_links: List[Tuple[int, int]] = []
   dto_lyrics: List[Tuple[int, str, str, str, str | None, str | None, Literal[0, 1] | None, str | None]] = []
   dto_translators: List[Tuple[int, str, str, str, str]] = []
   for results in batch_results:
     page_id = results.vlw_page_id
     dto_pages.append((page_id, results.title))
+    if results.categories is not None:
+      dto_vlw_categories.extend([(page_id, cat) for cat in results.categories])
     dto_vdb_links.extend([(page_id, id) for id in results.vdb_ids])
     for table_id, st in results.lyrics.items():
       m = st.map_ids
@@ -116,6 +126,10 @@ def save_lyrics_sqlite_plaintext(db_filepath: str, batch_results: List[ParsedRes
     db_cursor.executemany(
       f"INSERT INTO VLW_PAGES(VLW_ID, VLW_TITLE) VALUES (?, ?);", 
       dto_pages
+    )
+    db_cursor.executemany(
+      f"INSERT INTO VLW_CATEGORIES(VLW_ID, CATEGORY) VALUES (?, ?);", 
+      dto_vlw_categories
     )
     db_cursor.executemany(
       f"INSERT INTO VDB_LINKS(VLW_ID, VDB_ID) VALUES (?, ?);", 

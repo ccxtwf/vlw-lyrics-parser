@@ -131,7 +131,7 @@ def __treat_page(lyrics_format: LyricFormat) -> Callable[[etree.Element], Corout
     try:
       title, page_id = get_page_properties(node)
       page_contents = get_page_contents(node)
-      parsed_html, iw_links, external_links = await render_html(page_contents)
+      parsed_html, iw_links, external_links, categories = await render_html(page_contents)
       vdb_ids = get_vocadb_ids(iw_links, external_links)
       
       if lyrics_format == "plaintext":
@@ -140,6 +140,7 @@ def __treat_page(lyrics_format: LyricFormat) -> Callable[[etree.Element], Corout
           title=title,
           vlw_page_id=page_id, 
           vdb_ids=vdb_ids, 
+          categories=categories,
           table_ids=table_ids,
           lyrics=parsed_data,
           notes=notes,

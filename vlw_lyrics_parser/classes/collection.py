@@ -36,10 +36,13 @@ class ReferenceItem(BaseModel):
     Attributes:
         group_name (str | None):    
                               The group name of the <references /> tag.
+
         anchor_hash (str):    The hash fragment of the reference item.
                               Citations on the wiki page will refer 
                               to this `anchor_hash`.
+
         counter (int):        The index position of the `li` item in `ol`.
+
         text (str):           The text contents of the reference/note.
   """
   group_name: str | None
@@ -65,11 +68,13 @@ class ParsedLyrics(BaseModel, Generic[T]):
     Attributes:
         headers (List[str]):    A list of plaintext strings, representing 
                                 the text of the column headers.
+
         _map_ids (Dict[str, str]):
                                 Key -> Semantic Column ID, 
                                   e.g. `jp`, `rom`, `en`; 
                                 Value -> Column header 
                                   (same as listed in `headers`)
+
         data (Dict[str, List[T]]):
                                 Data representation of the contents 
                                 of each table cell, belonging to 
@@ -79,6 +84,7 @@ class ParsedLyrics(BaseModel, Generic[T]):
                                   e.g. `jp`, `rom`, `en`; 
                                 Value -> List containing the 
                                   contents of each table cell
+
         translators (Dict[str, ParsedTranslators]): 
                                 Data representation of the translation credits, 
                                 corresponding to a specific column
@@ -111,13 +117,21 @@ class ParsedResults(BaseModel, Generic[T]):
     Attributes:
         title (str):            The title of the page on Vocaloid 
                                 Lyrics Wiki
+
         vlw_page_id (int):      The page id on Vocaloid Lyrics Wiki
+
         vdb_page_id (int):      The page id on VocaDB
+        
+        categories (List[str] | None)  
+                                A list of categories on the Vocaloid Lyrics Wiki
+
         table_ids (List[str]):  A list of strings corresponding to the 
                                 semantic IDs of the lyrics tables.
                                 These semantic IDs comprise the keys 
                                 to the `lyrics` dictionary.
-        lyrics (List[T]):       A list of objects, corresponding to 
+
+        lyrics (Dict[str, ParsedLyrics[T]]):
+                                A list of objects, corresponding to 
                                 the number of lyrics tables on the 
                                 given page (note that one lyrics 
                                 table may have more than one 
@@ -125,6 +139,7 @@ class ParsedResults(BaseModel, Generic[T]):
                                 
                                 Key -> Semantic Table ID, e.g. `1`;
                                 Value -> Structured lyrics object
+
         notes (Dict[str, Dict[str, List[ReferenceItem]]]):
                                 Data representation of the references/
                                 notes, which may be bound to a 
@@ -142,6 +157,7 @@ class ParsedResults(BaseModel, Generic[T]):
   title: str
   vlw_page_id: int
   vdb_ids: List[int] = Field(default_factory=list)
+  categories: List[str] | None = None
   table_ids: List[str] = Field(default_factory=list)
-  notes: Dict[str, Dict[str, List[ReferenceItem]]] = Field(default_factory=dict)
   lyrics: Dict[str, ParsedLyrics[T]] = Field(default_factory=dict) 
+  notes: Dict[str, Dict[str, List[ReferenceItem]]] = Field(default_factory=dict)

@@ -49,7 +49,7 @@ def pipeline(
     data = resp.json()
     title_from_api = data["parse"]["title"]
     pageid_from_api = data["parse"]["pageid"]
-    parsed_html, iw_links, external_links = handle_api_response(data)
+    parsed_html, iw_links, external_links, categories = handle_api_response(data)
 
   vdb_ids = get_vocadb_ids(iw_links, external_links)
 
@@ -60,6 +60,7 @@ def pipeline(
       title=title_from_api,
       vlw_page_id=pageid_from_api, 
       vdb_ids=vdb_ids, 
+      categories=categories,
       table_ids=table_ids,
       lyrics=parsed_data,
       notes=notes,

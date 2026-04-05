@@ -27,7 +27,7 @@ async def pipeline(
   elif json_filepath is not None and output_format != 'json':
     output_format = 'json'
 
-  parsed_html, iw_links, external_links = await render_html(wikitext)
+  parsed_html, iw_links, external_links, categories = await render_html(wikitext)
   vdb_ids = get_vocadb_ids(iw_links, external_links)
 
   if lyrics_format == "plaintext":
@@ -37,6 +37,7 @@ async def pipeline(
       title="TEST STRING",
       vlw_page_id=0, 
       vdb_ids=vdb_ids, 
+      categories=categories,
       table_ids=table_ids,
       lyrics=parsed_data,
       notes=notes,
