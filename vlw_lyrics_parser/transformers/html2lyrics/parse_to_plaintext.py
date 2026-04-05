@@ -19,14 +19,16 @@ def parse_to_plaintext(raw_html: str) -> Tuple[List[str], Dict[str, ParsedLyrics
         ( &lt;TABLE_IDS&gt;, &lt;PARSED_LYRICS&gt;, &lt;PARSED_REFERENCE_NOTES&gt; ):
                               `TABLE_IDS` (List[str]) is the list of semantic IDs of 
                               each table
+
                               `PARSED_LYRICS` (Dict[str, ParsedLyrics[str]]) is a
                               dictionary mapping the semantic ID of each table with
                               the parsed lyrics
+
                               `PARSED_REFERENCE_NOTES` (Dict[str, Dict[str, List[ReferenceItem]]]) 
                               is a dictionary mapping the semantic ID of each table 
                               with the parsed notes
     Output:
-    ( Array[ &lt;TABLE_ID> ], Map[ &lt;TABLE ID>, &lt;PARSED LYRICS & OTHER INFO> ] )
+    ( Array[ &lt;TABLE_ID> ], Map[ &lt;TABLE ID>, &lt;PARSED LYRICS & OTHER INFO> ], Map[ &lt;TABLE ID>, Map[ &lt;COLUMN ID>, &lt;PARSED NOTES> ] ] )
   """
   try:
     table_ids: List[str] = []
@@ -124,12 +126,12 @@ def parse_to_plaintext(raw_html: str) -> Tuple[List[str], Dict[str, ParsedLyrics
     for i in range(len(poem_divs)):
       id = f"___poem-{i+1}"
       poem_div = poem_divs.eq(i)
-      a = ParsedLyrics[str](
+      res[id] = ParsedLyrics[str](
         headers=["*"],
         table_id=id,
+        map_ids={"*":"*"},
+        data={"*":[str(poem_div.text())]}
       )
-      a.data["*"] = [str(poem_div.text())]
-      res["*"] = a
     
     notes = parse_reference_notes(d)
 
