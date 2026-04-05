@@ -1,0 +1,3 @@
+[submodule "vlw_lyrics_parser/libs/wikitextprocessor"]
+	path = vlw_lyrics_parser/libs/wikitextprocessor
+	url = https://github.com/ccxtwf/wikitextprocessor.git

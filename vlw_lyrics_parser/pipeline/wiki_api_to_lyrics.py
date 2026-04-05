@@ -1,15 +1,20 @@
-from .. import console, traceback, getenv, JSON_INDENTATION
+from .. import console, traceback, JSON_INDENTATION
 
 from ..classes.collection import ParsedResults
 from ..classes.types import LyricFormat, OutputFileFormat
+from ..classes.exceptions import LyricsFormatNotImplementedException
 
-from ..wikitext2html.mediawiki_action_api_parser import (
+from ..transformers.wikitext2html.mediawiki_action_api_parser import (
   prepare_api_headers, 
   prepare_api_payload, 
   handle_api_response
 )
-from ..html2lyrics.parse_to_plaintext import parse_to_plaintext
-from ..html2lyrics.utils import get_vocadb_ids
+from ..transformers.html2lyrics.index import parse
+from ..transformers.html2lyrics.utils import get_vocadb_ids
+from ..config import (
+  VLW_LIVE_API_ENTRYPOINT,
+  CUSTOM_USER_AGENT,
+)
 
 import requests
 
@@ -19,24 +24,18 @@ def pipeline(
     pageid: int | None = None,
     json_filepath: str | None = None, 
     lyrics_format: LyricFormat = 'plaintext',
-    api_entrypoint: str | None = None, 
+    api_entrypoint: str = VLW_LIVE_API_ENTRYPOINT, 
     output_format: OutputFileFormat = 'console',
-    user_agent: str | None = None,
+    user_agent: str | None = CUSTOM_USER_AGENT,
   ) -> None:
   """
-    Makes a request to the given MediaWiki API entrypoint (or the entrypoint set on .env if 
-    this argument is unspecified), parses the lyrics (in plaintext) and finally
-    saves the parsed results into a JSON file.
+    Makes a request to the live Vocaloid Lyrics Wiki API endpoint, parses the 
+    lyrics and finally saves the parsed results either into a JSON file, or as 
+    console output.
   """
-  if lyrics_format != 'plaintext':
-    raise NotImplementedError("Can only parse plaintext lyrics")
-
   if output_format == 'json' and json_filepath is None:
     console.print(f"A JSON filepath has to be specified! Switching to output_format = 'console'", style="red")
     output_format = 'console'
-
-  if api_entrypoint is None:
-    api_entrypoint = getenv("MEDIAWIKI_ACTION_API_ENTRYPOINT", "")
 
   api_headers = prepare_api_headers(user_agent=user_agent)
   api_payload = prepare_api_payload(title=title, pageid=pageid, revid=revid)
@@ -48,21 +47,21 @@ def pipeline(
     data = resp.json()
     title_from_api = data["parse"]["title"]
     pageid_from_api = data["parse"]["pageid"]
-    parsed_html, iw_links, external_links = handle_api_response(data)
+    parsed_html, iw_links, external_links, categories = handle_api_response(data)
 
   vdb_ids = get_vocadb_ids(iw_links, external_links)
 
-  if lyrics_format == "plaintext":
-    table_ids, parsed_data, notes = parse_to_plaintext(parsed_html)
+  table_ids, parsed_data, notes = parse(parsed_html, lyrics_format=lyrics_format)
 
-    res = ParsedResults[str](
-      title=title_from_api,
-      vlw_page_id=pageid_from_api, 
-      vdb_ids=vdb_ids, 
-      table_ids=table_ids,
-      lyrics=parsed_data,
-      notes=notes,
-    )
+  res = ParsedResults(
+    title=title_from_api,
+    vlw_page_id=pageid_from_api, 
+    vdb_ids=vdb_ids, 
+    categories=categories,
+    table_ids=table_ids,
+    lyrics=parsed_data,
+    notes=notes,
+  )
 
   if output_format == 'json':
     console.print(f"Creating a JSON dump at {json_filepath}", style="magenta")

@@ -1,11 +1,12 @@
 import aiohttp
 
-from .. import console, traceback, getenv
-from ..classes.exceptions import ReadMediawikiException
+from ... import console, traceback
+from ...classes.exceptions import ReadMediawikiException
+from ...config import (
+  WIKITEXT2HTML_PARSER_API_ENTRYPOINT
+)
 
 from typing import Tuple, List, Dict, Any
-
-MEDIAWIKI_ACTION_API_ENTRYPOINT = getenv("MEDIAWIKI_ACTION_API_ENTRYPOINT", "")
 
 def prepare_api_headers(user_agent: str | None = None) -> Dict[str, Any]:
   headers = {
@@ -27,9 +28,7 @@ def prepare_api_payload(
     "format": "json",
     "disableeditsection": "true",
     "disablelimitreport": "true",
-    # "prop": "text|categories|sections|iwlinks|externallinks",
-    # "prop": "text",
-    "prop": "text|iwlinks|externallinks",
+    "prop": "text|iwlinks|externallinks|categories",
   }
 
   if wikitext is not None:
@@ -45,13 +44,14 @@ def prepare_api_payload(
   
   return payload
 
-def handle_api_response(data: Any) -> Tuple[str, List[str], List[str]]:
+def handle_api_response(data: Any) -> Tuple[str, List[str], List[str], List[str]]:
   if "error" in data:
     raise ReadMediawikiException(data["error"]["info"])
   parsed_html_string: str = data["parse"]["text"]["*"]
 
   """
   This may be used to get the position of each heading
+  `sections` must be part of the `prop` field in the payload to use this
   """
   #sections: List[Tuple[str, str]] = [(o["line"], o["linkAnchor"]) for o in data["parse"].get("sections", [])]
 
@@ -59,8 +59,9 @@ def handle_api_response(data: Any) -> Tuple[str, List[str], List[str]]:
   Can be used to parse additional information
   Example output: 
   Categories: "Japanese songs", "Mandarin songs"
+  `categories` must be part of the `prop` field in the payload to use this
   """
-  #categories: List[str] = [o["*"] for o in data["parse"].get("categories", [])]
+  categories: List[str] = [o["*"] for o in data["parse"].get("categories", [])]
 
   """
   Can be used to parse links pointing to VocaDB
@@ -72,9 +73,9 @@ def handle_api_response(data: Any) -> Tuple[str, List[str], List[str]]:
   external_links: List[str] = data["parse"].get("externallinks", [])
   
   # return (parsed_html_string, sections, categories, iwlinks, externallinks)
-  return (parsed_html_string, iw_links, external_links)
+  return (parsed_html_string, iw_links, external_links, categories)
 
-async def render_html(page_contents: str) -> Tuple[str, List[str], List[str]]:
+async def render_html(page_contents: str) -> Tuple[str, List[str], List[str], List[str]]:
   """
     A wikitext-to-HTML parser that works by calling upon the MediaWiki Action API 
 
@@ -89,7 +90,7 @@ async def render_html(page_contents: str) -> Tuple[str, List[str], List[str]]:
       data.add_field(k, v)
     async with aiohttp.ClientSession() as session:
       async with session.post(
-        MEDIAWIKI_ACTION_API_ENTRYPOINT, 
+        WIKITEXT2HTML_PARSER_API_ENTRYPOINT, 
         headers=headers, 
         data=data
       ) as response:

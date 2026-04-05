@@ -1,7 +1,7 @@
 from pyquery import PyQuery as pq
 
-from .. import console, traceback
-from ..classes.collection import ParsedTranslators, ReferenceItem
+from ... import console, traceback
+from ...classes.collection import ParsedTranslators, ReferenceItem
 
 import json
 
@@ -65,6 +65,7 @@ def parse_translators(root: pq, lyrics_table_id: str) -> Dict[str, ParsedTransla
 
     Parameters:
         root (PyQuery):                 PyQuery document root
+
         lyrics_table_id (str):          Semantic ID of the table
 
     Returns:
@@ -77,10 +78,10 @@ def parse_translators(root: pq, lyrics_table_id: str) -> Dict[str, ParsedTransla
   """
     Check for the presence of {{Translator}}
   """
-  divs = root.find(f".lyrics-table-{lyrics_table_id}:has(.vlw-translator)")
+  divs = root.find(f".lyrics-table-{lyrics_table_id}:has(.vlw-translators)")
   for i in range(len(divs)):
     div = divs.eq(i)
-    tl = div.find('.vlw-translator')
+    tl = div.find('.vlw-translators')
 
     list_classes = [clss[len('lyrics-anchor-'):] for clss in str(div.attr('class')).split(" ") if clss.startswith('lyrics-anchor-')]
     col_id = list_classes[0]
@@ -91,7 +92,7 @@ def parse_translators(root: pq, lyrics_table_id: str) -> Dict[str, ParsedTransla
       res[col_id] = ParsedTranslators(
         col_id=col_id, 
         translators=[], 
-        text=text,
+        text="",
         is_official=False
       )
     
@@ -108,6 +109,9 @@ def parse_translators(root: pq, lyrics_table_id: str) -> Dict[str, ParsedTransla
       raise
     
     res[col_id].translators.extend(translators)
+    if len(res[col_id].text) > 0:
+      res[col_id].text += "\n"
+    res[col_id].text += text
   
   """
     Check for the presence of {{OfficialEnglishNotify}}
@@ -127,7 +131,7 @@ def parse_translators(root: pq, lyrics_table_id: str) -> Dict[str, ParsedTransla
     
 def parse_reference_notes(root: pq) -> Dict[str, Dict[str, List[ReferenceItem]]]:
   """
-    Parses the references "{{Reflist}}" or "<references />" within the page
+    Parses the references "{{Reflist}}" within the page
     In VLW, different reference groups may be bound to different columns of different
     lyrics tables. When the column's visibility is toggled on/off, so does the
     visibility of the references group. The modules/templates that control this 
@@ -157,7 +161,7 @@ def parse_reference_notes(root: pq) -> Dict[str, Dict[str, List[ReferenceItem]]]
     """
       Determine which column of the lyrics table the references div is bound to
     """
-    anchor_wrapper_div = outer_wrapper.children(':not(.mw-references-wrap)')
+    anchor_wrapper_div = outer_wrapper.children('.lyrics-anchor')
     anchor_table = None
     anchor_col = None
     if len(anchor_wrapper_div) == 0:
@@ -172,7 +176,7 @@ def parse_reference_notes(root: pq) -> Dict[str, Dict[str, List[ReferenceItem]]]
       if len(b) > 0:
         anchor_col = b[0][len('lyrics-anchor-'):]
 
-    # Default to these keys if the <references /> are not bound to anything
+    # Default to these keys if the {{Reflist}} are not bound to anything
     anchor_table = anchor_table or "*"
     anchor_col = anchor_col or "*"
     if anchor_table not in ddict:

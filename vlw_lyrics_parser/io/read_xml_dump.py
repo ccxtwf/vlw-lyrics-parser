@@ -1,20 +1,18 @@
-import xml.etree.ElementTree as ET
+from lxml import etree
 from xml.sax.saxutils import unescape
 
 from itertools import batched
 
-from .. import console, traceback, getenv
+from .. import console, traceback
 from ..classes.exceptions import ReadXmlException
 
 from typing import Tuple
 from collections.abc import Callable, Awaitable
 
-XML_NAMESPACE = getenv("MW_XML_DUMP_NAMESPACE")
-
 async def read_dump(
     dump_file_path: str, 
     max_pages_to_unpack_at_a_time: int, 
-    batch_callback: Callable[[Tuple[ET.Element, ...]], Awaitable]
+    batch_callback: Callable[[Tuple[etree.Element, ...]], Awaitable]
   ) -> None:
   """
     Reads the given XML dump file, unpacks several pages at a time, then starts an async task 
@@ -24,13 +22,16 @@ async def read_dump(
         dump_file_path (str):
         max_pages_to_unpack_at_a_time (int):
                                       Number of XML nodes to unpack at a time
-        batch_callback ((ET.Element[]) -> Awaitable):
+        batch_callback ((lxml.etree.Element[]) -> Awaitable):
                                       Callback to execute upon yielding a batch of XML nodes
   """
   try:
     console.print("Opening file: ", dump_file_path, style="magenta")
     
-    for batch in batched(iterate_xml(dump_file_path), max_pages_to_unpack_at_a_time):
+    for batch in batched(
+      etree.iterparse(dump_file_path, tag="{*}page"), 
+      max_pages_to_unpack_at_a_time
+    ):
       await batch_callback(batch)
     
   except Exception:
@@ -43,61 +44,34 @@ async def read_dump(
   finally:
     console.print("Finished reading: ", dump_file_path, style="green")
 
-def iterate_xml(dump_file_path: str):
-  """
-    Overly simplistic XML parser
-    
-    Will prolly break over malformed XML or incorrectly formatted XML
-    
-    Parameters:
-        dump_file_path (str):
-    
-    Yields:
-        ET.Element:       An XML node representing a wikipage
-  """
-  xml_iter = ET.iterparse(dump_file_path, events=['start', 'end'])
-  # last_tag = None
-  is_open = False
-  root = None
-  cur = next(xml_iter, None)
-  while cur:
-    event, element = cur
-    if event == "start" and not is_open and element.tag in [f"{XML_NAMESPACE}page"]:
-      is_open = True
-      root = element
-      # last_tag = element.tag
-    elif event == "end" and root is not None and element.tag == root.tag:
-      yield root
-      is_open = False
-      root = None
-    cur = next(xml_iter, None)
-
-def get_page_properties(xmlTree: ET.Element) -> Tuple[str, int]:
+def get_page_properties(xmlTree: etree.Element) -> Tuple[str, int]:
   """    
     Parameters:
-        xmlTree (ET.Element):
+        xmlTree (lxml.etree.Element):
                           An XML node representing a wikipage
     
     Returns:
         ( str, int ):     The page title and the numeric page ID       
   """
   try:
-    title = xmlTree.find(f"{XML_NAMESPACE}title")
-    if title is None or title.text is None:
+    title = xmlTree.findtext("{*}title", None)
+    if title is None:
       raise ReadXmlException("Failed to read <title> of <page>")
-    title = title.text
 
-    page_id = xmlTree.find(f"{XML_NAMESPACE}id")
-    if page_id is None or page_id.text is None:
+    page_id = xmlTree.findtext("{*}id", None)
+    if page_id is None:
       raise ReadXmlException("Failed to read <id> of <page>")
-    page_id = int(page_id.text) # type: ignore
+    if page_id.isnumeric():
+      page_id = int(page_id)
+    else:
+      page_id = 0
 
     return (title, page_id)
   
   except Exception:
     raise
 
-def get_page_contents(xmlTree: ET.Element) -> str:
+def get_page_contents(xmlTree: etree.Element) -> str:
   """
     Reads the page content for the given XML element
 
@@ -108,22 +82,20 @@ def get_page_contents(xmlTree: ET.Element) -> str:
     If you exported the full history, worry more.
     
     Parameters:
-        xmlTree (ET.Element):
+        xmlTree (lxml.etree.Element):
                           An XML node representing a wikipage
     
     Returns:
         str:              Page contents
   """
   try: 
-    if xmlTree.tag != f"{XML_NAMESPACE}page":
-      raise ReadXmlException(f"Expected XML Element <page>, got <{xmlTree.tag}>")
-    revision = xmlTree.find(f"{XML_NAMESPACE}revision")
+    revision = xmlTree.find("{*}revision")
     if revision is None:
       raise ReadXmlException("Cannot find XML element node <revision> in <page>")
-    contents = revision.find(f"{XML_NAMESPACE}text")
-    if contents is None or contents.text is None:
+    contents = revision.findtext("{*}text", None)
+    if contents is None:
       raise ReadXmlException("Cannot find XML element node <text> in <revision>")
-    contents = unescape(contents.text)
+    contents = unescape(contents)
     return contents
   except Exception:
     raise

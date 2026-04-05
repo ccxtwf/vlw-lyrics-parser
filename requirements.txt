@@ -1,8 +1,0 @@
-# Python >= 3.12
-aiohttp==3.11.8
-lxml==6.0.2
-rich==14.3.3
-pyquery==2.0.1
-pydantic==2.12.5
-pydantic_core==2.41.5
-python-dotenv==1.2.2

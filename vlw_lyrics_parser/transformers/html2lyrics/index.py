@@ -1,16 +1,18 @@
 from pyquery import PyQuery as pq
 
-from .. import console, traceback
-from ..classes.collection import ParsedLyrics, ReferenceItem
+from ... import console, traceback
+from ...classes.collection import ParsedLyrics, ReferenceItem
+from ...classes.types import LyricFormat
+from ...classes.exceptions import LyricsFormatNotImplementedException
 from .parse_properties import parse_ids_and_headers, parse_translators, parse_reference_notes
 
 import re
 
-from typing import Dict, Tuple, List
+from typing import Dict, Tuple, List, get_args
 
-def parse_to_plaintext(raw_html: str) -> Tuple[List[str], Dict[str, ParsedLyrics[str]], Dict[str, Dict[str, List[ReferenceItem]]]]:
+def parse(raw_html: str, lyrics_format: LyricFormat) -> Tuple[List[str], Dict[str, ParsedLyrics], Dict[str, Dict[str, List[ReferenceItem]]]]:
   """
-    Parse the lyrics (as plaintext) from the given HTML string
+    Parse the lyrics from the given HTML string
 
     Parameters:
         raw_html (str):       Raw HTML string
@@ -19,15 +21,20 @@ def parse_to_plaintext(raw_html: str) -> Tuple[List[str], Dict[str, ParsedLyrics
         ( &lt;TABLE_IDS&gt;, &lt;PARSED_LYRICS&gt;, &lt;PARSED_REFERENCE_NOTES&gt; ):
                               `TABLE_IDS` (List[str]) is the list of semantic IDs of 
                               each table
-                              `PARSED_LYRICS` (Dict[str, ParsedLyrics[str]]) is a
+
+                              `PARSED_LYRICS` (Dict[str, ParsedLyrics]) is a
                               dictionary mapping the semantic ID of each table with
                               the parsed lyrics
+
                               `PARSED_REFERENCE_NOTES` (Dict[str, Dict[str, List[ReferenceItem]]]) 
                               is a dictionary mapping the semantic ID of each table 
                               with the parsed notes
     Output:
-    ( Array[ &lt;TABLE_ID> ], Map[ &lt;TABLE ID>, &lt;PARSED LYRICS & OTHER INFO> ] )
+    ( Array[ &lt;TABLE_ID> ], Map[ &lt;TABLE ID>, &lt;PARSED LYRICS & OTHER INFO> ], Map[ &lt;TABLE ID>, Map[ &lt;COLUMN ID>, &lt;PARSED NOTES> ] ] )
   """
+  if lyrics_format not in get_args(LyricFormat):
+    raise LyricsFormatNotImplementedException()
+  
   try:
     table_ids: List[str] = []
     res: Dict[str, ParsedLyrics[str]] = {}
@@ -124,12 +131,12 @@ def parse_to_plaintext(raw_html: str) -> Tuple[List[str], Dict[str, ParsedLyrics
     for i in range(len(poem_divs)):
       id = f"___poem-{i+1}"
       poem_div = poem_divs.eq(i)
-      a = ParsedLyrics[str](
+      res[id] = ParsedLyrics[str](
         headers=["*"],
         table_id=id,
+        map_ids={"*":"*"},
+        data={"*":[str(poem_div.text())]}
       )
-      a.data["*"] = [str(poem_div.text())]
-      res["*"] = a
     
     notes = parse_reference_notes(d)
 
