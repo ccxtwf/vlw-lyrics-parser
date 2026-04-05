@@ -22,6 +22,8 @@ from vlw_lyrics_parser.config import (
 import asyncio
 import re
 
+from typing import Any
+
 def confirm_action(prompt_message):
   while True:
     user_input = input(prompt_message + " [Y/N]: ").lower().strip()
@@ -44,9 +46,9 @@ def initialize_argparser() -> argparse.ArgumentParser:
     ( "-M", "--lyrics-format" ), 
     { "type": str, "choices": ["plaintext"], "help": "Lyrics format" }
   )
-  shared_exp_use_wtp_argument = (
+  shared_exp_use_wtp_argument: tuple[tuple[str], dict[str, Any]] = (
     ( "--wtp", ), 
-    { "type": bool, "action": "store_true", "help": "Use experimental wikitextprocessor module instead of the MediaWiki Action API" }
+    { "action": "store_true", "help": "Use experimental wikitextprocessor module instead of the MediaWiki Action API" }
   )
   shared_output_format_argument_short = (
     ( "--output-format", ),
