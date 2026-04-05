@@ -10,7 +10,7 @@ from ..io.save_output_sqlite import save_lyrics_sqlite_plaintext
 from ..io.save_output_json import save_lyrics_json
 from ..transformers.wikitext2html.mediawiki_action_api_parser import render_html
 from ..transformers.html2lyrics.utils import get_vocadb_ids
-from ..transformers.html2lyrics.parse_to_plaintext import parse_to_plaintext
+from ..transformers.html2lyrics.index import parse
 from ..config import (
   MAX_PAGES_TO_UNPACK,
   JSON_DUMP_BATCH_SIZE,
@@ -26,6 +26,7 @@ async def pipeline(
     xml_dump_file_path: str, 
     output_directory: str, 
     filename: str,
+    transformer: Callable[[str, int, str], Coroutine[Any, Any, ParsedResults]],
     lyrics_format: LyricFormat = 'plaintext',
     output_format: MassOutputFileFormat = 'json',
     batch_size: int | None = None,
@@ -42,7 +43,7 @@ async def pipeline(
   q = asyncio.Queue(n)
   
   _tb = __treat_batch(
-    lyrics_format=lyrics_format,
+    transformer=transformer,
     queue=q
   )
 
@@ -104,14 +105,14 @@ def __get_filename_with_sequential_suffix(filename: str, counter: int) -> str:
   return re.sub(r"(\.[a-zA-Z0-9]+)$", fr"-{counter}\1", filename)
 
 def __treat_batch(
-    lyrics_format: LyricFormat, 
+    transformer: Callable[[str, int, str], Coroutine[Any, Any, ParsedResults]],
     queue: asyncio.Queue
   ) -> Callable[[Tuple[Tuple[str, etree.Element], ...]], Awaitable]:
   async def _fn(batch: Tuple[Tuple[str, etree.Element], ...]) -> None:
     """
       Async handler to parallelize several separate coroutines (one per page) for each batch
     """
-    fn = __treat_page(lyrics_format)
+    fn = __treat_page(transformer)
     waitTasks = asyncio.gather(
       *[fn(page) for _, page in batch],
       return_exceptions=False
@@ -123,7 +124,7 @@ def __treat_batch(
       await queue.put(res)
   return _fn
 
-def __treat_page(lyrics_format: LyricFormat) -> Callable[[etree.Element], Coroutine[Any, Any, Optional[ParsedResults[Any]]]]:
+def __treat_page(transformer: Callable[[str, int, str], Coroutine[Any, Any, ParsedResults]]) -> Callable[[etree.Element], Coroutine[Any, Any, Optional[ParsedResults[Any]]]]:
   async def _fn(node: etree.Element) -> Optional[ParsedResults[Any]]:
     """
       Coroutine for each individual page
@@ -131,21 +132,8 @@ def __treat_page(lyrics_format: LyricFormat) -> Callable[[etree.Element], Corout
     try:
       title, page_id = get_page_properties(node)
       page_contents = get_page_contents(node)
-      parsed_html, iw_links, external_links, categories = await render_html(page_contents)
-      vdb_ids = get_vocadb_ids(iw_links, external_links)
-      
-      if lyrics_format == "plaintext":
-        table_ids, parsed_data, notes = parse_to_plaintext(parsed_html)
-        res = ParsedResults[str](
-          title=title,
-          vlw_page_id=page_id, 
-          vdb_ids=vdb_ids, 
-          categories=categories,
-          table_ids=table_ids,
-          lyrics=parsed_data,
-          notes=notes,
-        )
-        return res
+      res = await transformer(title, page_id, page_contents)
+      return res
     
     except Exception:
       console.print(

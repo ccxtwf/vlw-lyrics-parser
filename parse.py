@@ -4,9 +4,10 @@ from vlw_lyrics_parser import (
   console,
   parse_lyrics_from_test_string,
   parse_lyrics_from_wiki_api,
-  parse_lyrics_from_xml_dump
+  parse_lyrics_from_xml_dump,
+  TransformerUtils
 )
-from vlw_lyrics_parser.pipeline.xml_to_html_to_lyrics import (
+from vlw_lyrics_parser.pipeline.xml_to_lyrics import (
   get_default_filename,
   check_if_file_exists
 )
@@ -43,6 +44,10 @@ def initialize_argparser() -> argparse.ArgumentParser:
     ( "-M", "--lyrics-format" ), 
     { "type": str, "choices": ["plaintext"], "help": "Lyrics format" }
   )
+  shared_exp_use_wtp_argument = (
+    ( "--wtp", ), 
+    { "type": bool, "action": "store_true", "help": "Use experimental wikitextprocessor module instead of the MediaWiki Action API" }
+  )
   shared_output_format_argument_short = (
     ( "--output-format", ),
     { "type": str, "choices": ["console", "json"], "help": "Show parsed lyrics as console output or JSON file" }
@@ -75,6 +80,10 @@ def initialize_argparser() -> argparse.ArgumentParser:
   test_string_parser.add_argument(
     *shared_output_format_argument_short[0],
     **shared_output_format_argument_short[1]
+  )
+  test_string_parser.add_argument(
+    *shared_exp_use_wtp_argument[0],
+    **shared_exp_use_wtp_argument[1]
   )
 
   api_parser = subparsers.add_parser(
@@ -161,6 +170,10 @@ def initialize_argparser() -> argparse.ArgumentParser:
     type=int,  
     help="Number of items to add to the JSON/SQLITE database file per insert operation",
   )
+  xml_parser.add_argument(
+    *shared_exp_use_wtp_argument[0],
+    **shared_exp_use_wtp_argument[1]
+  )
 
   return parser
 
@@ -178,7 +191,10 @@ def main() -> None:
   if command == "str":
     coro = parse_lyrics_from_test_string(
       args.wikitext, 
-      lyrics_format=args.lyrics_format,
+      transformer=TransformerUtils.test_string_to_lyrics(
+        lyrics_format=args.lyrics_format,
+        use_experimental_wtp=False,
+      ),
       json_filepath=args.output,
       output_format=args.output_format,
     )
@@ -233,6 +249,10 @@ def main() -> None:
       xml_dump_file_path=args.input,
       output_directory=args.directory,
       filename=args.filename,
+      transformer=TransformerUtils.wikipage_to_lyrics(
+        lyrics_format=args.lyrics_format,
+        use_experimental_wtp=False,
+      ),
       lyrics_format=args.lyrics_format,
       output_format=args.output_format,
       batch_size=args.batch_size,

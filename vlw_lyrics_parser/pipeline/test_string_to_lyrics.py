@@ -1,25 +1,21 @@
 from .. import console, traceback, JSON_INDENTATION
 
 from ..classes.collection import ParsedResults
-from ..classes.types import LyricFormat, OutputFileFormat
+from ..classes.types import OutputFileFormat
 
-from ..transformers.wikitext2html.mediawiki_action_api_parser import render_html
-from ..transformers.html2lyrics.parse_to_plaintext import parse_to_plaintext
-from ..transformers.html2lyrics.utils import get_vocadb_ids
+from typing import Callable, Coroutine, Any
 
 async def pipeline(
     wikitext: str, 
-    lyrics_format: LyricFormat = 'plaintext',
+    transformer: Callable[[str], Coroutine[Any, Any, ParsedResults]],
     json_filepath: str | None = None, 
     output_format: OutputFileFormat = 'console',
   ) -> None:
   """
     A pipeline to convert a given portion of wikitext into a structured 
-    object containing the parsed lyrics (in plaintext) and finally
-    saving the parsed results into a JSON file.
+    object containing the parsed lyrics and finally saving the parsed 
+    results into a JSON file.
   """
-  if lyrics_format != 'plaintext':
-    raise NotImplementedError("Can only parse plaintext lyrics")
 
   if output_format == 'json' and json_filepath is None:
     console.print(f"A JSON filepath has to be specified! Switching to output_format = 'console'", style="red")
@@ -27,21 +23,7 @@ async def pipeline(
   elif json_filepath is not None and output_format != 'json':
     output_format = 'json'
 
-  parsed_html, iw_links, external_links, categories = await render_html(wikitext)
-  vdb_ids = get_vocadb_ids(iw_links, external_links)
-
-  if lyrics_format == "plaintext":
-    table_ids, parsed_data, notes = parse_to_plaintext(parsed_html)
-
-    res = ParsedResults[str](
-      title="TEST STRING",
-      vlw_page_id=0, 
-      vdb_ids=vdb_ids, 
-      categories=categories,
-      table_ids=table_ids,
-      lyrics=parsed_data,
-      notes=notes,
-    )
+  res = await transformer(wikitext)
 
   if output_format == 'json':
     console.print(f"Creating a JSON dump at {json_filepath}", style="magenta")
