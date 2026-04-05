@@ -22,7 +22,7 @@ import re
 from itertools import dropwhile
 from collections import defaultdict
 
-from typing import List, Dict, Tuple, Iterable, get_args
+from typing import List, Set, Dict, Tuple, Iterable, get_args
 
 def parse(title: str, page_id: int, contents: str, lyrics_format: LyricFormat) -> ParsedResults:
   """
@@ -291,7 +291,7 @@ def __get_lyrics_from_poem_divs(
 def __get_properties(tree: "WikiNode") -> Tuple[List[str], List[int]]:
   """Get the VocaDB ids and categories that are parsed from the tree."""
   vocadb_ids: List[int] = []
-  categories: List[str] = []
+  categories: Set[str] = set()
 
   iwlinks = tree.find_child_recursively(target_kinds=NodeKind.LINK)
   for iwlink in iwlinks:
@@ -305,7 +305,7 @@ def __get_properties(tree: "WikiNode") -> Tuple[List[str], List[int]]:
     # Find [[Category:some cat|sortkey]]
     m = re.search(r"^[Cc]at(?:egory|)\s*:\s*(.*)\s*$", iwlink_internal)
     if m is not None:
-      categories.append(m.group(1))
+      categories.add(m.group(1))
   
   extlinks = tree.find_child_recursively(target_kinds=NodeKind.URL)
   for extlink in extlinks:
@@ -316,7 +316,7 @@ def __get_properties(tree: "WikiNode") -> Tuple[List[str], List[int]]:
     if m is not None:
       vocadb_ids.append(int(m.group(1)))
   
-  return (categories, vocadb_ids)
+  return (list(categories), vocadb_ids)
 
 def __fetch_templates(tree: "WikiNode") -> Tuple[List[WikiNode], List[WikiNode], List[WikiNode]]:
   translator_templates: List[WikiNode] = []
