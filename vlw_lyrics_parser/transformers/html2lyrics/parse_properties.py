@@ -78,10 +78,10 @@ def parse_translators(root: pq, lyrics_table_id: str) -> Dict[str, ParsedTransla
   """
     Check for the presence of {{Translator}}
   """
-  divs = root.find(f".lyrics-table-{lyrics_table_id}:has(.vlw-translator)")
+  divs = root.find(f".lyrics-table-{lyrics_table_id}:has(.vlw-translators)")
   for i in range(len(divs)):
     div = divs.eq(i)
-    tl = div.find('.vlw-translator')
+    tl = div.find('.vlw-translators')
 
     list_classes = [clss[len('lyrics-anchor-'):] for clss in str(div.attr('class')).split(" ") if clss.startswith('lyrics-anchor-')]
     col_id = list_classes[0]
