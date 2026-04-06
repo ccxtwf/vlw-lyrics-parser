@@ -5,7 +5,7 @@ from os.path import abspath, join
 from .. import console, traceback
 from ..classes.collection import ParsedResults
 
-from typing import List, Tuple, Literal
+from typing import List, Tuple, Literal, Any
 
 def initialize_db(output_directory: str, filename: str):
   """
@@ -25,7 +25,7 @@ def initialize_db(output_directory: str, filename: str):
   db_cursor.execute("DROP TABLE IF EXISTS VLW_PAGES;")
   db_cursor.execute("DROP TABLE IF EXISTS VLW_CATEGORIES;")
   db_cursor.execute("DROP TABLE IF EXISTS VDB_LINKS;")
-  db_cursor.execute("DROP TABLE IF EXISTS LYRICS_PLAINTEXT;")
+  db_cursor.execute("DROP TABLE IF EXISTS LYRICS;")
   db_cursor.execute("DROP TABLE IF EXISTS TRANSLATORS;")
   db_cursor.execute("CREATE TABLE VLW_PAGES(VLW_ID INTEGER NOT NULL, VLW_TITLE VARCHAR);")
   db_cursor.execute("""
@@ -41,11 +41,12 @@ def initialize_db(output_directory: str, filename: str):
       VDB_ID INTEGER NOT NULL
     );""")
   db_cursor.execute("""
-    CREATE TABLE LYRICS_PLAINTEXT(
+    CREATE TABLE LYRICS(
       VLW_ID INTEGER NOT NULL 
         REFERENCES VLW_PAGES(VLW_ID) ON UPDATE CASCADE ON DELETE CASCADE, 
       TABLE_ID VARCHAR, 
       COL_ID VARCHAR,
+      COL_INDEX INTEGER,
       HEADER VARCHAR, 
       LYRICS TEXT, 
       TRANSLATION_CREDITS VARCHAR, 
@@ -66,19 +67,29 @@ def initialize_db(output_directory: str, filename: str):
   db_conn.commit()
   db_conn.close()
 
-def save_lyrics_sqlite_plaintext(db_filepath: str, batch_results: List[ParsedResults[str]]):
+def save_lyrics_sqlite(db_filepath: str, batch_results: List[ParsedResults[Any]]):
   """
-    Save the parsed plaintext lyrics to a SQLITE database.
+    Save the parsed lyrics to a SQLITE database. 
+    
+    This method is an agnostic implementation, meaning that each 
+    `ParsedResults[T]` object being passed into this method is 
+    responsible for correctly implementing the serialization of 
+    its lyrics via its `lyrics` (type: *Dict&lt;[column ID], [string]&gt;*) 
+    field. Therefore this method does not make any assumptions on 
+    how the lyrics may be represented (in string format) when 
+    extracted in raw form from the `ParsedResults[T]`'s `data` 
+    (type: *Dict&lt;[column ID], [List&lt;T>]&gt;*) field.
     
     Parameters:
         db_filepath (str):
-        batch_results (List[ParsedResults[str]]):
+
+        batch_results (List[ParsedResults[Any]]): 
   """
   # Aggregate
   dto_pages: List[Tuple[int, str]] = []
   dto_vlw_categories: List[Tuple[int, str]] = []
   dto_vdb_links: List[Tuple[int, int]] = []
-  dto_lyrics: List[Tuple[int, str, str, str, str | None, str | None, Literal[0, 1] | None, str | None]] = []
+  dto_lyrics: List[Tuple[int, str, str, int | None, str, str | None, str | None, Literal[0, 1] | None, str | None]] = []
   dto_translators: List[Tuple[int, str, str, str, str]] = []
   for results in batch_results:
     page_id = results.vlw_page_id
@@ -87,11 +98,11 @@ def save_lyrics_sqlite_plaintext(db_filepath: str, batch_results: List[ParsedRes
       dto_vlw_categories.extend([(page_id, cat) for cat in results.categories])
     dto_vdb_links.extend([(page_id, id) for id in results.vdb_ids])
     for table_id, st in results.lyrics.items():
-      m = st.map_ids
+      m = { v : k for k, v in st.map_ids.items() }
       tn = results.notes.get(table_id, None)
-      for col_id, header in m.items():
-        lyrics = st.data.get(col_id, [])
-        lyrics = "\n".join(lyrics)
+      for col_index, header in enumerate(st.headers):
+        col_id = m[header]
+        lyrics = st.lyrics.get(col_id, None)
         translators = st.translators.get(col_id, None) if st.translators is not None else None
         translators_text = translators.text if translators is not None else None
         notes = tn.get(col_id, None) if tn is not None else None
@@ -100,7 +111,7 @@ def save_lyrics_sqlite_plaintext(db_filepath: str, batch_results: List[ParsedRes
         if translators is not None:
           is_official_translation = 1 if translators.is_official else 0
         dto_lyrics.extend([
-          (page_id, table_id, col_id, header, lyrics, translators_text, is_official_translation, notes)
+          (page_id, table_id, col_id, col_index, header, lyrics, translators_text, is_official_translation, notes)
         ])
         if translators is not None:
           dto_translators.extend(
@@ -110,13 +121,13 @@ def save_lyrics_sqlite_plaintext(db_filepath: str, batch_results: List[ParsedRes
         notes = tn["*"]
         notes = "\n".join(map(lambda note: note.to_plaintext(), notes))
         dto_lyrics.append(
-          (page_id, table_id, "*", "*", None, None, None, notes)
+          (page_id, table_id, "*", None, "*", None, None, None, notes)
         )
     if "*" in results.notes:
       for col_id, notes in results.notes["*"].items():
         notes = "\n".join(map(lambda note: note.to_plaintext(), notes))
         dto_lyrics.append(
-          (page_id, "*", col_id, col_id, None, None, None, notes)
+          (page_id, "*", col_id, None, col_id, None, None, None, notes)
         )
 
   db_conn = sqlite3.connect(db_filepath)
@@ -136,7 +147,7 @@ def save_lyrics_sqlite_plaintext(db_filepath: str, batch_results: List[ParsedRes
       dto_vdb_links
     )
     db_cursor.executemany(
-      f"INSERT INTO LYRICS_PLAINTEXT(VLW_ID, TABLE_ID, COL_ID, HEADER, LYRICS, TRANSLATION_CREDITS, IS_OFFICIAL_TRANSLATION, NOTES) VALUES (?, ?, ?, ?, ?, ?, ?, ?);", 
+      f"INSERT INTO LYRICS(VLW_ID, TABLE_ID, COL_ID, COL_INDEX, HEADER, LYRICS, TRANSLATION_CREDITS, IS_OFFICIAL_TRANSLATION, NOTES) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);", 
       dto_lyrics
     )
     db_cursor.executemany(

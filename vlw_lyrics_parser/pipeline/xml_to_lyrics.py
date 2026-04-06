@@ -6,7 +6,7 @@ from ..classes.collection import ParsedResults
 from ..classes.types import LyricFormat, MassOutputFileFormat
 
 from ..io.read_xml_dump import read_dump, get_page_contents, get_page_properties
-from ..io.save_output_sqlite import save_lyrics_sqlite_plaintext
+from ..io.save_output_sqlite import save_lyrics_sqlite
 from ..io.save_output_json import save_lyrics_json
 from ..transformers.wikitext2html.mediawiki_action_api_parser import render_html
 from ..transformers.html2lyrics.utils import get_vocadb_ids
@@ -155,10 +155,12 @@ def _prepare_save_data_operation(
       save_lyrics_json(join(dir, rfilename), data)
     return inner
   elif output_format == "sqlite":
-    if lyrics_format == "plaintext":
-      def inner(dir: str, filename: str, counter: int, data: List[Any]) -> None:
-        save_lyrics_sqlite_plaintext(join(dir, filename), data)
-      return inner
+    def inner(dir: str, filename: str, counter: int, data: List[Any]) -> None:
+      save_lyrics_sqlite(
+        db_filepath=join(dir, filename), 
+        batch_results=data,
+      )
+    return inner
   raise NotImplementedError
 
 async def __save_lyrics(

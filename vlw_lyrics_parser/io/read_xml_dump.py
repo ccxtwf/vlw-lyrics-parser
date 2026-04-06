@@ -20,8 +20,10 @@ async def read_dump(
 
     Parameters:
         dump_file_path (str):
+
         max_pages_to_unpack_at_a_time (int):
                                       Number of XML nodes to unpack at a time
+                                      
         batch_callback ((lxml.etree.Element[]) -> Awaitable):
                                       Callback to execute upon yielding a batch of XML nodes
   """
@@ -76,8 +78,9 @@ def get_page_contents(xmlTree: etree.Element) -> str:
     Reads the page content for the given XML element
 
     IMPORTANT: 
-    xmlTree.find() finds the first element (from top) with the given tag
-    This function assumes that there can only be one <revision> element in one <page> element
+    `xmlTree.find()` finds the first element (from top) with the given tag.
+    This function assumes that there can only be one &lt;revision&gt; element in 
+    one &lt;page&gt; element.
     If you exported only the latest revision of the pages, then you shouldn't worry.
     If you exported the full history, worry more.
     

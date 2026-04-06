@@ -53,18 +53,20 @@ T = TypeVar('T')
 class ParsedLyrics(BaseModel, Generic[T]):
   """
     A representation of data for one lyrics table
-     - Lyrics are stored as plaintext
-     - A lyrics table may have more than one translation
+     - Lyrics are stored as either as a list of plaintext strings, or a list of structured objects.
+     - A lyrics table may have more than one translation.
      - A translation may be officially or unofficially sourced.
      - Official translations are marked by {{OfficialEnglishNotify}}.
      - Translations are credited to translators marked by the {{Translator}} template.
-     - There may also be translation notes
+     - There may also be translation notes.
     
     Attributes:
         headers (List[str]):    A list of plaintext strings, representing 
                                 the text of the column headers.
 
-        _map_ids (Dict[str, str]):
+        table_id (str):         Table semantic ID
+
+        map_ids (Dict[str, str]):
                                 Key -> Semantic Column ID, 
                                   e.g. `jp`, `rom`, `en`; 
                                 Value -> Column header 
@@ -72,8 +74,8 @@ class ParsedLyrics(BaseModel, Generic[T]):
 
         data (Dict[str, List[T]]):
                                 Data representation of the contents 
-                                of each table cell, belonging to 
-                                each column
+                                of each table cell, partitioned by 
+                                column
 
                                 Key -> Semantic Column ID, 
                                   e.g. `jp`, `rom`, `en`; 
@@ -91,9 +93,8 @@ class ParsedLyrics(BaseModel, Generic[T]):
   headers: List[str] = Field(default_factory=list)
   table_id: str
   map_ids: Dict[str, str] = Field(default_factory=dict)
-  data: Dict[str, List[str]] = Field(default_factory=dict, exclude=True)
+  data: Dict[str, List[T]] = Field(default_factory=dict, exclude=True)
   translators: Dict[str, ParsedTranslators] | None = None
-  # notes: Dict[str, List[ReferenceItem]]
 
   def model_post_init(self, __context=None):
     self.data = { id: [] for id in self.map_ids }
@@ -101,7 +102,8 @@ class ParsedLyrics(BaseModel, Generic[T]):
   @computed_field
   @property
   def lyrics(self) -> Dict[str, str]:
-    return { id: "\n".join(l) for id, l in self.data.items() }
+    """String representation of the lyrics, partitioned by column"""
+    return { id: "\n".join(map(str, l)) for id, l in self.data.items() }
 
 class ParsedResults(BaseModel, Generic[T]):
   """
