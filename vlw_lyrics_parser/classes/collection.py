@@ -37,16 +37,11 @@ class ReferenceItem(BaseModel):
         group_name (str | None):    
                               The group name of the <references /> tag.
 
-        anchor_hash (str):    The hash fragment of the reference item.
-                              Citations on the wiki page will refer 
-                              to this `anchor_hash`.
-
         counter (int):        The index position of the `li` item in `ol`.
 
         text (str):           The text contents of the reference/note.
   """
   group_name: str | None
-  anchor_hash: str
   counter: int
   text: str
 
