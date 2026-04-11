@@ -199,12 +199,10 @@ def parse_reference_notes(root: pq) -> Dict[str, Dict[str, List[ReferenceItem]]]
     for j in range(len(references_items)):
       ref_item = references_items.eq(j)
       counter += 1
-      anchor_hash = str(ref_item.attr('id') or "")
       plaintext = str(ref_item.find('.reference-text').text() or "").strip()
       res.append(
         ReferenceItem(
           group_name=ref_group_name,
-          anchor_hash=anchor_hash, 
           counter=counter, 
           text=plaintext
         )

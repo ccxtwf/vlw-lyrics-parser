@@ -20,8 +20,10 @@ async def read_dump(
 
     Parameters:
         dump_file_path (str):
+
         max_pages_to_unpack_at_a_time (int):
                                       Number of XML nodes to unpack at a time
+                                      
         batch_callback ((lxml.etree.Element[]) -> Awaitable):
                                       Callback to execute upon yielding a batch of XML nodes
   """
@@ -44,14 +46,14 @@ async def read_dump(
   finally:
     console.print("Finished reading: ", dump_file_path, style="green")
 
-def get_page_properties(xmlTree: etree.Element) -> Tuple[str, int]:
+def get_page_properties(xmlTree: etree.Element) -> Tuple[str, int, int]:
   """    
     Parameters:
         xmlTree (lxml.etree.Element):
                           An XML node representing a wikipage
     
     Returns:
-        ( str, int ):     The page title and the numeric page ID       
+        ( str, int, int ):     The page title, numeric page ID, and namespace       
   """
   try:
     title = xmlTree.findtext("{*}title", None)
@@ -66,7 +68,15 @@ def get_page_properties(xmlTree: etree.Element) -> Tuple[str, int]:
     else:
       page_id = 0
 
-    return (title, page_id)
+    namespace = xmlTree.findtext("{*}ns", None)
+    if namespace is None:
+      raise ReadXmlException("Failed to read <ns> of <page>")
+    if namespace.isnumeric():
+      namespace = int(namespace)
+    else:
+      namespace = 0
+
+    return (title, page_id, namespace)
   
   except Exception:
     raise
@@ -76,8 +86,9 @@ def get_page_contents(xmlTree: etree.Element) -> str:
     Reads the page content for the given XML element
 
     IMPORTANT: 
-    xmlTree.find() finds the first element (from top) with the given tag
-    This function assumes that there can only be one <revision> element in one <page> element
+    `xmlTree.find()` finds the first element (from top) with the given tag.
+    This function assumes that there can only be one &lt;revision&gt; element in 
+    one &lt;page&gt; element.
     If you exported only the latest revision of the pages, then you shouldn't worry.
     If you exported the full history, worry more.
     

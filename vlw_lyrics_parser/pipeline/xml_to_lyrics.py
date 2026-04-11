@@ -6,7 +6,7 @@ from ..classes.collection import ParsedResults
 from ..classes.types import LyricFormat, MassOutputFileFormat
 
 from ..io.read_xml_dump import read_dump, get_page_contents, get_page_properties
-from ..io.save_output_sqlite import save_lyrics_sqlite_plaintext
+from ..io.save_output_sqlite import save_lyrics_sqlite
 from ..io.save_output_json import save_lyrics_json
 from ..transformers.wikitext2html.mediawiki_action_api_parser import render_html
 from ..transformers.html2lyrics.utils import get_vocadb_ids
@@ -130,7 +130,9 @@ def __treat_page(transformer: Callable[[str, int, str], Coroutine[Any, Any, Pars
       Coroutine for each individual page
     """
     try:
-      title, page_id = get_page_properties(node)
+      title, page_id, ns = get_page_properties(node)
+      if ns != 0:
+        return None
       page_contents = get_page_contents(node)
       res = await transformer(title, page_id, page_contents)
       return res
@@ -151,14 +153,32 @@ def _prepare_save_data_operation(
   ) -> Callable[[str, str, int, List[Any]], None]:
   if output_format == "json":
     def inner(dir: str, filename: str, counter: int, data: List[Any]) -> None:
-      rfilename = __get_filename_with_sequential_suffix(filename, counter)
-      save_lyrics_json(join(dir, rfilename), data)
+      try:
+        rfilename = __get_filename_with_sequential_suffix(filename, counter)
+        save_lyrics_json(join(dir, rfilename), data)
+      except Exception as e:
+        console.print(
+          f"Unexpected error occured", 
+          traceback.format_exc(), 
+          sep="\n", 
+          style="red"
+        )
     return inner
   elif output_format == "sqlite":
-    if lyrics_format == "plaintext":
-      def inner(dir: str, filename: str, counter: int, data: List[Any]) -> None:
-        save_lyrics_sqlite_plaintext(join(dir, filename), data)
-      return inner
+    def inner(dir: str, filename: str, counter: int, data: List[Any]) -> None:
+      try:
+        save_lyrics_sqlite(
+          db_filepath=join(dir, filename), 
+          batch_results=data,
+        )
+      except Exception as e:
+        console.print(
+          f"Unexpected error occured", 
+          traceback.format_exc(), 
+          sep="\n", 
+          style="red"
+        )
+    return inner
   raise NotImplementedError
 
 async def __save_lyrics(
