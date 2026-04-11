@@ -137,7 +137,6 @@ def __convert_node_to_text(
   """Parses the text contents of a wikinode"""
   sb: List[str] = []
   def recurse(node: GeneralNode, parent: GeneralNode | None = None):
-    print(node)
     if type(node) == str:
       contents = unescape(node)
       if (
@@ -276,6 +275,7 @@ def __get_lyrics_from_poem_divs(
       headers=["*"],
       table_id=id,
     )
+    a.map_ids["*"] = "*"
     a.data["*"] = [__convert_node_to_text(wtp, node, remove_coloured_blocks=True, abbreviate_ref=True)]
     res[id] = a
 

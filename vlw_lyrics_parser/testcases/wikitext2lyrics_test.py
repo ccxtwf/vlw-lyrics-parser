@@ -15,6 +15,7 @@ def test_parse_wikitext2lyrics(case):
     got_lyrics = res.lyrics[table_id]
     expected_lyrics = case.expected.lyrics[table_id]
     assert got_lyrics.headers == expected_lyrics.headers
+    assert got_lyrics.map_ids == expected_lyrics.map_ids
     assert got_lyrics.data == expected_lyrics.data
     assert got_lyrics.translators == expected_lyrics.translators
   assert res.notes == case.expected.notes

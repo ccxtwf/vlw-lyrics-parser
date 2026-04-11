@@ -153,15 +153,31 @@ def _prepare_save_data_operation(
   ) -> Callable[[str, str, int, List[Any]], None]:
   if output_format == "json":
     def inner(dir: str, filename: str, counter: int, data: List[Any]) -> None:
-      rfilename = __get_filename_with_sequential_suffix(filename, counter)
-      save_lyrics_json(join(dir, rfilename), data)
+      try:
+        rfilename = __get_filename_with_sequential_suffix(filename, counter)
+        save_lyrics_json(join(dir, rfilename), data)
+      except Exception as e:
+        console.print(
+          f"Unexpected error occured", 
+          traceback.format_exc(), 
+          sep="\n", 
+          style="red"
+        )
     return inner
   elif output_format == "sqlite":
     def inner(dir: str, filename: str, counter: int, data: List[Any]) -> None:
-      save_lyrics_sqlite(
-        db_filepath=join(dir, filename), 
-        batch_results=data,
-      )
+      try:
+        save_lyrics_sqlite(
+          db_filepath=join(dir, filename), 
+          batch_results=data,
+        )
+      except Exception as e:
+        console.print(
+          f"Unexpected error occured", 
+          traceback.format_exc(), 
+          sep="\n", 
+          style="red"
+        )
     return inner
   raise NotImplementedError
 

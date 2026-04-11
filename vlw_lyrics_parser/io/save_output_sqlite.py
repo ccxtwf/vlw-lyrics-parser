@@ -19,7 +19,7 @@ def initialize_db(output_directory: str, filename: str):
         filename (str):
   """
   filename = abspath(join(output_directory, filename))
-  console.print(f"Creating an SQLITE Database at {filename}", style="magenta")
+  console.print(f"Creating a SQLITE Database at {filename}", style="magenta")
   db_conn = sqlite3.connect(filename)
   db_cursor = db_conn.cursor()
   db_cursor.execute("DROP TABLE IF EXISTS VLW_PAGES;")
