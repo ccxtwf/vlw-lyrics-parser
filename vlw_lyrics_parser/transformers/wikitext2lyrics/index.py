@@ -132,7 +132,7 @@ def __convert_node_to_text(wtp: "Wtp", node: "WikiNode", remove_coloured_blocks:
   sb: List[str] = []
   def recurse(node: GeneralNode, parent: GeneralNode | None = None):
     if type(node) == str:
-      contents = node
+      contents = unescape(node)
       if (
         remove_coloured_blocks and 
         parent is not None and isinstance(parent, WikiNode) and 
@@ -444,7 +444,6 @@ def __get_notes(wtp: "Wtp", ref_elements: Iterable["WikiNode"], reflist_template
     ref_items[ref_group or "*"].append(
       ReferenceItem(
         group_name=ref_group, 
-        anchor_hash="", 
         counter=counter,
         text=node_contents,
       )
