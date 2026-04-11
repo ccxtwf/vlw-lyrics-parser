@@ -1219,8 +1219,235 @@ Of a bicycle built for two!"""
     )
   )
 
+  t12 = ExpectTestCase(
+    description="A Japanese song page with multiple versions",
+    page_title="SOME TITLE",
+    page_contents="""{{Infobox Song
+|songtitle = "'''SOME TITLE'''"
+|color = gray; color: white
+|original upload date = {{Date|2000|January|1}}
+|singer = [[Hatsune Miku (VOCALOID)]]
+|producer = [[someone]] (music, lyrics)
+|#views = 10,000,000+
+|link = {{#|https://www.youtube.com/watch?v=abcd1234fgh}}
+|description = "A description"
+|language = Japanese
+}}
+
+==Alternate Versions==
+{{AlternateVersion
+|title = Another version
+|color = red; color:yellow
+|date = January 5, 2024
+|singer = someone
+|producer = someone (music, lyrics)
+|links = {{#|https://www.youtube.com/watch?v=abcd1234fgh}}
+|description = This is an alt version
+}}
+
+==Lyrics==
+<tabber>
+{{lyrics toggle|jp:Japanese|rom:Romaji|eng:English}}
+{| {{lyrics table class}}
+|- class="lyrics-table-header"
+! {{lyrics header}}
+|-
+|いろはにほへと
+|Iro fa nifofeto
+|Even the blossoming flowers
+|-
+|ちりぬるを	
+|Tirinuru wo
+|Will eventually scatter
+|-
+|わかよたれそ	
+|Wa ka yo tare so
+|Who in our world
+|-
+|つねならむ
+|Tune naramu
+|Shall always be?
+|-
+|<br />
+|-
+|うゐのおくやま	
+|Uwi no okuyama
+|The deep mountains of conditions—
+|-
+|けふこえて
+|Kefu koyete
+|We cross them today
+|-
+|あさきゆめみし
+|Asaki yume misi
+|And we shall not have shallow dreams
+|-
+|ゑひもせす	
+|Wefi mo sesu
+|Nor be intoxicated.
+|}
+{{Translator|J. Doe}}
+|-|
+{{lyrics toggle|jp:Japanese|rom:Romaji|eng:English}}
+{| {{lyrics table class}}
+|- class="lyrics-table-header"
+! {{lyrics header}}
+|-
+|以呂波耳本へ止
+|Iro wa nioedo
+|Even the blooming flowers
+|-
+|千利奴流乎
+|Chirinuru o
+|Will eventually scatter
+|-
+|和加餘多連曽
+|Wa ga yo dare zo
+|Who in our world
+|-
+|津祢那良牟
+|Tsune naran
+|Shall always be?
+|-
+|<br />
+|-
+|有為能於久耶万
+|Ui no okuyama
+|We cross the deep 
+|-
+|計不己衣天
+|Kyou koete
+|mountains of conditions today
+|-
+|阿佐伎喩女美之
+|Asaki yume miji
+|Neither shall we have shallow dreams
+|-
+|恵比毛勢須
+|Yoi mo sezu
+|Nor be intoxicated.
+|}
+{{Translator|A. Thompson}}
+</tabber>
+
+==External Links==
+*{{VDB|S/1}}
+""",
+    expected=ParsedResults(
+      title="SOME TITLE",
+      vlw_page_id=0,
+      table_ids=["1", "2"],
+      lyrics={
+        "1": ParsedLyrics[str](
+          headers=["Japanese", "Romaji", "English"],
+          table_id="1",
+          map_ids={
+            "jp": "Japanese",
+            "rom": "Romaji",
+            "eng": "English"
+          },
+          translators={
+            "eng": ParsedTranslators(
+              col_id="eng",
+              is_official=False,
+              translators=["J. Doe"],
+              text="English translation by J. Doe\n"
+            )
+          },
+          data={
+            "jp": [
+              "いろはにほへと",
+              "ちりぬるを",
+              "わかよたれそ", 
+              "つねならむ",
+              "",
+              "うゐのおくやま",
+              "けふこえて",
+              "あさきゆめみし",
+              "ゑひもせす"
+            ],
+            "rom": [
+              "Iro fa nifofeto",
+              "Tirinuru wo",
+              "Wa ka yo tare so",
+              "Tune naramu",
+              "",
+              "Uwi no okuyama",
+              "Kefu koyete",
+              "Asaki yume misi",
+              "Wefi mo sesu"
+            ],
+            "eng": [
+              "Even the blossoming flowers",
+              "Will eventually scatter",
+              "Who in our world",
+              "Shall always be?",
+              "",
+              "The deep mountains of conditions—",
+              "We cross them today",
+              "And we shall not have shallow dreams",
+              "Nor be intoxicated."
+            ]
+          }
+        ),
+        "2": ParsedLyrics[str](
+          headers=["Japanese", "Romaji", "English"],
+          table_id="2",
+          map_ids={
+            "jp": "Japanese",
+            "rom": "Romaji",
+            "eng": "English"
+          },
+          translators={
+            "eng": ParsedTranslators(
+              col_id="eng",
+              is_official=False,
+              translators=["A. Thompson"],
+              text="English translation by A. Thompson\n"
+            )
+          },
+          data={
+            "jp": [
+              "以呂波耳本へ止",
+              "千利奴流乎",
+              "和加餘多連曽",
+              "津祢那良牟",
+              "",
+              "有為能於久耶万",
+              "計不己衣天",
+              "阿佐伎喩女美之",
+              "恵比毛勢須",
+            ],
+            "rom": [
+              "Iro wa nioedo",
+              "Chirinuru o",
+              "Wa ga yo dare zo",
+              "Tsune naran",
+              "",
+              "Ui no okuyama",
+              "Kyou koete",
+              "Asaki yume miji",
+              "Yoi mo sezu",
+            ],
+            "eng": [
+              "Even the blooming flowers",
+              "Will eventually scatter",
+              "Who in our world",
+              "Shall always be?",
+              "",
+              "We cross the deep",
+              "mountains of conditions today",
+              "Neither shall we have shallow dreams",
+              "Nor be intoxicated.",
+            ]
+          }
+        )
+      }
+    )
+  )
+
   testcases = [
-    t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11
+    t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12
   ]
 
 populate()
