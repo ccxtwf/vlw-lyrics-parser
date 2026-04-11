@@ -46,14 +46,14 @@ async def read_dump(
   finally:
     console.print("Finished reading: ", dump_file_path, style="green")
 
-def get_page_properties(xmlTree: etree.Element) -> Tuple[str, int]:
+def get_page_properties(xmlTree: etree.Element) -> Tuple[str, int, int]:
   """    
     Parameters:
         xmlTree (lxml.etree.Element):
                           An XML node representing a wikipage
     
     Returns:
-        ( str, int ):     The page title and the numeric page ID       
+        ( str, int, int ):     The page title, numeric page ID, and namespace       
   """
   try:
     title = xmlTree.findtext("{*}title", None)
@@ -68,7 +68,15 @@ def get_page_properties(xmlTree: etree.Element) -> Tuple[str, int]:
     else:
       page_id = 0
 
-    return (title, page_id)
+    namespace = xmlTree.findtext("{*}ns", None)
+    if namespace is None:
+      raise ReadXmlException("Failed to read <ns> of <page>")
+    if namespace.isnumeric():
+      namespace = int(namespace)
+    else:
+      namespace = 0
+
+    return (title, page_id, namespace)
   
   except Exception:
     raise

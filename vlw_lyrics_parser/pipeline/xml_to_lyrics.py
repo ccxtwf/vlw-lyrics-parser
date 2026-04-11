@@ -130,7 +130,9 @@ def __treat_page(transformer: Callable[[str, int, str], Coroutine[Any, Any, Pars
       Coroutine for each individual page
     """
     try:
-      title, page_id = get_page_properties(node)
+      title, page_id, ns = get_page_properties(node)
+      if ns != 0:
+        return None
       page_contents = get_page_contents(node)
       res = await transformer(title, page_id, page_contents)
       return res
