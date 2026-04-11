@@ -60,6 +60,7 @@ def parse(title: str, page_id: int, contents: str, lyrics_format: LyricFormat) -
   __get_lyrics_from_poem_divs(
     wtp=wtp,
     tree=tree,
+    table_ids=table_ids,
     res=parsed_lyrics,
     lyrics_format=lyrics_format,
   )
@@ -127,10 +128,16 @@ def __get_parse_tree(wtp: "Wtp", contents: str) -> WikiNode:
   """
   return wtp.parse(contents, expand_all=True)
 
-def __convert_node_to_text(wtp: "Wtp", node: "WikiNode", remove_coloured_blocks: bool = False) -> str:
+def __convert_node_to_text(
+    wtp: "Wtp", 
+    node: "WikiNode", 
+    remove_coloured_blocks: bool = False, 
+    abbreviate_ref: bool = False
+  ) -> str:
   """Parses the text contents of a wikinode"""
   sb: List[str] = []
   def recurse(node: GeneralNode, parent: GeneralNode | None = None):
+    print(node)
     if type(node) == str:
       contents = unescape(node)
       if (
@@ -154,6 +161,14 @@ def __convert_node_to_text(wtp: "Wtp", node: "WikiNode", remove_coloured_blocks:
       recurse(expanded, node)
       # do not recurse the current node's children
       return
+    elif node.kind == NodeKind.LINK and re.search(r"^\s*[Cc]at(?:egory|)", str(node.largs[0][0])) is not None:
+      # no need to do anything with [[Category:something]]
+      return
+    elif abbreviate_ref and node.kind == NodeKind.HTML and node.sarg == "ref":
+      ref_group = node.attrs.get("group", None)
+      recurse(f"[{ref_group + " " if ref_group is not None else ""}{node.attrs.get("__ref_count", "1")}]", node)
+      # do not recurse the node's children
+      return
     elif node.kind == NodeKind.LINK or node.kind == NodeKind.URL:
       if len(node.largs) == 1:
         recurse(node.largs[0][0])
@@ -163,7 +178,7 @@ def __convert_node_to_text(wtp: "Wtp", node: "WikiNode", remove_coloured_blocks:
     for child in node.children:
       recurse(child, node)
   recurse(node)
-  return "".join(sb)
+  return "".join(sb).strip()
 
 def __get_lyrics_from_lyrics_tables(
     wtp: "Wtp", 
@@ -225,7 +240,7 @@ def __get_lyrics_from_lyrics_tables(
       tds = list(tr.find_child(target_kinds=NodeKind.TABLE_CELL))
       i = 0
       for td in tds:
-        td_text = __convert_node_to_text(wtp, td, remove_coloured_blocks=True).rstrip()
+        td_text = __convert_node_to_text(wtp, td, remove_coloured_blocks=True, abbreviate_ref=True)
 
         colspan = 1
         # shared <br /> column
@@ -249,17 +264,19 @@ def __get_lyrics_from_lyrics_tables(
 def __get_lyrics_from_poem_divs(
     wtp: "Wtp", 
     tree: "WikiNode", 
+    table_ids: List[str],
     res: Dict[str, ParsedLyrics[str]],
     lyrics_format: LyricFormat
   ) -> None:
   """Parses lyrics from invocations of <poem> or {{Lyrics}}"""
   for i, node in enumerate(tree.find_html_recursively(target_tag="poem")):
     id = f"___poem-{i+1}"
+    table_ids.append(id)
     a = ParsedLyrics[str](
       headers=["*"],
       table_id=id,
     )
-    a.data["*"] = [__convert_node_to_text(wtp, node, remove_coloured_blocks=True).rstrip()]
+    a.data["*"] = [__convert_node_to_text(wtp, node, remove_coloured_blocks=True, abbreviate_ref=True)]
     res[id] = a
 
 def __get_properties(tree: "WikiNode") -> Tuple[List[str], List[int]]:
@@ -334,36 +351,6 @@ def __fetch_templates(tree: "WikiNode") -> Tuple[List[WikiNode], List[WikiNode],
   
   return (translator_templates, official_english_tl_templates, reflist_templates)
 
-def __parse_template_params(wtp: "Wtp", largs: List[List[str | WikiNode]]) -> Dict[str, str]:
-  res: Dict[str, str] = {}
-  n = 0
-  for larg in largs:
-    k_nodes: GeneralNode
-    v_nodes: GeneralNode
-    x: int = -1
-    for i, p in enumerate(larg):
-      if type(p) != str:
-        continue
-      if "=" in p:
-        x = i
-        break
-    if x == -1:
-      n += 1
-      k_nodes = [str(n)]
-      v_nodes = larg[:]
-    else:
-      s = larg[x]
-      assert(type(s) == str)
-      m = re.search(r"^\s*(.*?)\s*=\s*(.*)\s*$", s)
-      assert(m is not None)
-      k_nodes = larg[:x] + [m.group(1)]
-      v_nodes = [m.group(2)] + larg[x+1:]
-
-    k = wtp.expand(wtp.node_to_wikitext(k_nodes))
-    v = wtp.expand(wtp.node_to_wikitext(v_nodes))
-    res[k] = v
-  return res
-
 def __get_anchor_table_and_column_ids(node: WikiNode) -> Tuple[str | None, str | None]:
   class_list = node.css_classes()
   anchor_table_id: str | None = None
@@ -398,7 +385,7 @@ def __get_translation_info(wtp: "Wtp", translator_templates: List["WikiNode"], o
         style="red"
       )
       continue
-    text = __convert_node_to_text(wtp, el).rstrip() + "\n"
+    text = __convert_node_to_text(wtp, el) + "\n"
     
     if anchor_column_id not in translators[anchor_table_id]:
       translators[anchor_table_id][anchor_column_id] = ParsedTranslators(
@@ -436,7 +423,7 @@ def __get_notes(wtp: "Wtp", ref_elements: Iterable["WikiNode"], reflist_template
   for node in ref_elements:
     ref_group = node.attrs.get("group", None)
     counter = int(node.attrs.get("__ref_count", "0"))
-    node_contents = __convert_node_to_text(wtp, node).rstrip()
+    node_contents = __convert_node_to_text(wtp, node)
     ssu = f"{ref_group or "*"}-{counter}"
     if ssu in ss:
       continue

@@ -61,6 +61,10 @@ def get_wikitext_processor() -> "Wtp":
   wtp = Wtp(
     db_path=get_template_cache_path(),
     quiet=True,
+    template_override_funcs={
+      "!": lambda args: "|",
+      "=": lambda args: "=",
+    }
   )
   if wtp.is_template_store_outdated():
     wtp.note("Template store is out-of-date. Repopulating from the live wiki...")

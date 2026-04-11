@@ -97,7 +97,8 @@ class ParsedLyrics(BaseModel, Generic[T]):
   translators: Dict[str, ParsedTranslators] | None = None
 
   def model_post_init(self, __context=None):
-    self.data = { id: [] for id in self.map_ids }
+    if len(self.data.keys()) == 0:
+      self.data = { id: [] for id in self.map_ids }
 
   @computed_field
   @property
