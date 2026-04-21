@@ -3,7 +3,7 @@
 This is a Python package used to parse individual lyrics from the [Vocaloid Lyrics Wiki](https://vocaloidlyrics.miraheze.org).
 
 ## Disclosure
-### Copyright disclosure
+### Copyright disclaimer
 
 Original lyrics uploaded to the Vocaloid Lyrics Wiki are copyrighted by their respective rights holders. Organizations involved in music copyright include, but are not limited to, [ASCAP](https://www.ascap.com/help/music-business-101/money-copyright), [BMI](https://www.bmi.com/faq/category/copyright), [JASRAC](https://www.jasrac.or.jp/en/creators/), NexTone, and the [Music Copyright Society of China](https://www.mcsc.com.cn/en/situation.html). Users are responsible for ensuring that their use of lyrics and translations does not infringe on these rights.
 
